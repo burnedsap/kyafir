@@ -1,0 +1,1578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kyafir Speculation Engine</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      display: grid;
+      grid-template-columns: 300px 5px 1fr 5px 350px;
+      grid-template-rows: 60px 1fr;
+      height: 100vh;
+      background: #0a0a0a;
+      color: #e0e0e0;
+    }
+    
+    .resize-handle {
+      background: #333;
+      cursor: col-resize;
+      position: relative;
+    }
+    
+    .resize-handle:hover {
+      background: #3d0079;
+    }
+    
+    .resize-handle:active {
+      background: #3d0079;
+    }
+    #header {
+      grid-column: 1 / -1;
+      background: #111;
+      padding: 15px 20px;
+      border-bottom: 1px solid #333;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    #header input {
+      flex: 1;
+      padding: 8px 12px;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      color: #e0e0e0;
+      border-radius: 4px;
+    }
+    #header button {
+      padding: 8px 16px;
+      background: #3d0079;
+      border: none;
+      color: white;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    #header button:hover { background: #3b6; }
+    #chat {
+      background: #111;
+      border-right: 1px solid #333;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    #chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 15px;
+    }
+    #chat-input-container {
+      padding: 10px;
+      background: #1a1a1a;
+      border-top: 1px solid #333;
+      display: flex;
+      gap: 8px;
+    }
+    #chat-input-container input {
+      flex: 1;
+      padding: 8px 12px;
+      background: #0a0a0a;
+      border: 1px solid #333;
+      color: #e0e0e0;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+    #chat-input-container input::placeholder {
+      color: #666;
+    }
+    #chat-input-container button {
+      padding: 8px 16px;
+      background: #3d0079;
+      border: none;
+      color: white;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    #chat-input-container button:hover {
+      background: #4d0099;
+    }
+    #chat-input-container button:disabled {
+      background: #333;
+      cursor: not-allowed;
+      color: #666;
+    }
+    .message {
+      margin-bottom: 15px;
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .message.user { background: #1a3a4a; }
+    .message.system { background: #1a1a1a; color: #888; font-style: italic; }
+    .message.assistant { background: #2a2a2a; }
+    .message.insights { background: #2a1a4a; border-left: 3px solid #3d0079; }
+    #network {
+      background: #0a0a0a;
+      position: relative;
+      overflow: hidden;
+    }
+    #canvas {
+      background: #111;
+      border-left: 1px solid #333;
+      padding: 15px;
+      overflow-y: auto;
+      height: 100%;
+    }
+    /* Make WORKSPACE and NOTEPAD share vertical space */
+    #workspace-container {
+      flex: 4;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    #notepad-container {
+      flex: 6;
+      display: flex;
+      flex-direction: column;
+      margin-top: 10px;
+      overflow: hidden;
+      height: 87%;
+    }
+
+    #notepad-container textarea {
+      width: 100%;
+      height: 100%;
+      padding: 10px;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 4px;
+      color: #e0e0e0;
+      resize: none;
+      font-size: 13px;
+      box-sizing: border-box;
+      overflow-y: auto;
+    }
+    #canvas h3 {
+      font-size: 14px;
+      margin-bottom: 10px;
+      color: #888;
+    }
+    .canvas-item {
+      background: #1a1a1a;
+      padding: 8px 12px;
+      margin-bottom: 8px;
+      border-radius: 4px;
+      border: 1px solid #333;
+      cursor: move;
+      font-size: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .canvas-item:hover { border-color: #2a5; }
+    .canvas-item .remove-btn {
+      background: #a22;
+      color: white;
+      border: none;
+      padding: 2px 8px;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 11px;
+      margin-left: 10px;
+    }
+    .canvas-item .remove-btn:hover { background: #c33; }
+    
+    /* Button styling */
+    .action-btn {
+      width: 100%;
+      padding: 10px;
+      border: none;
+      color: white;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      margin-top: 8px;
+      font-weight: 500;
+    }
+    
+    #find-signals-btn {
+      background: #3d0079;
+    }
+    #find-signals-btn:hover { background: #4d0099; }
+    
+    #speculate-btn {
+      background: #0079aa;
+    }
+    #speculate-btn:hover { background: #0099dd; }
+    
+    .action-btn:disabled {
+      background: #333;
+      cursor: not-allowed;
+      color: #666;
+    }
+    
+    /* arXiv insights display */
+    .arxiv-insight {
+      background: #1a1a2a;
+      border-left: 3px solid #3d0079;
+      padding: 10px;
+      margin-bottom: 10px;
+      border-radius: 4px;
+    }
+    .arxiv-insight h4 {
+      color: #3d0079;
+      font-size: 12px;
+      margin-bottom: 5px;
+    }
+    .arxiv-insight .paper {
+      font-size: 11px;
+      color: #aaa;
+      margin-bottom: 8px;
+      padding-left: 8px;
+      border-left: 2px solid #333;
+    }
+    .arxiv-insight .paper-title {
+      color: #e0e0e0;
+      font-weight: 500;
+    }
+    .arxiv-insight .summary {
+      color: #ccc;
+      font-size: 12px;
+      margin-top: 8px;
+      font-style: italic;
+    }
+    
+    .node circle { cursor: pointer; }
+    .node:hover circle { stroke-width: 3px; }
+    .link { stroke: #444; stroke-opacity: 0.6; }
+    .node text {
+      font-size: 11px;
+      fill: #e0e0e0;
+      pointer-events: none;
+    }
+    .link-label {
+      font-size: 9px;
+      fill: #888;
+      pointer-events: none;
+      text-anchor: middle;
+    }
+    #tooltip {
+      position: absolute;
+      background: #1a1a1a;
+      border: 1px solid #3d0079;
+      padding: 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      display: none;
+      max-width: 250px;
+      z-index: 1000;
+    }
+    #settings {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: #1a1a1a;
+      padding: 5px;
+      border: 1px solid #333;
+      border-radius: 4px;
+      font-size: 11px;
+    }
+    #settings label { display: block; margin-bottom: 5px; color: #888; }
+    #settings input[type="text"] {
+      width: 100%;
+      padding: 4px;
+      background: #0a0a0a;
+      border: 1px solid #333;
+      color: #e0e0e0;
+      margin-bottom: 8px;
+    }
+    img {
+      height: 100%
+    }
+    
+    /* Loading spinner */
+    .spinner {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border: 2px solid #333;
+      border-top-color: #3d0079;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-left: 8px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <img src="kyafir white.png" alt="Kyafir Logo"></img>
+    <p>Speculation Engine</p>
+    <input type="text" id="topic-input" placeholder="Enter a topic to explore (e.g., 'bicycle', 'artificial intelligence')">
+    <button onclick="exploreTopic()">Explore</button>
+  </div>
+
+  <div id="chat">
+    <div id="chat-messages"></div>
+    <div id="chat-input-container">
+      <input type="text" id="chat-input" placeholder="Ask a question about the scenarios..." disabled>
+      <button id="chat-send-btn" onclick="sendChatMessage()" disabled>Send</button>
+    </div>
+  </div>
+
+  <div class="resize-handle" id="resize-chat"></div>
+
+  <div id="network">
+    <svg id="network-svg"></svg>
+    <div id="tooltip"></div>
+    <div id="settings">
+      <label>LLM API:</label>
+      <input type="text" id="api-url" value="http://localhost:1234/v1">
+    </div>
+  </div>
+
+  <div class="resize-handle" id="resize-network"></div>
+
+  <div id="canvas">
+    <div id="workspace-container">
+      <h3>WORKSPACE</h3>
+      <div id="canvas-items"></div>
+      <button id="find-signals-btn" class="action-btn" onclick="findLeadingSignals()">Find Leading Signals</button>
+      <button id="speculate-btn" class="action-btn" onclick="generateScenarios()">Speculate</button>
+    </div>
+
+    <div id="notepad-container">
+      <h3>NOTEPAD</h3>
+      <textarea id="notepad" placeholder="Paste or type your notes here..."></textarea>
+    </div>
+  </div>
+
+  <script>
+    // State
+    let nodes = [];
+    let links = [];
+    let simulation;
+    let canvasItems = [];
+    let currentTopic = '';
+    let wikidataEntityCache = {};
+    let arxivInsights = {}; // Store arXiv insights for each concept
+    let isFindingSignals = false; // Track if signal finding is in progress
+    let hasGeneratedScenarios = false; // Track if scenarios have been generated
+    let lastScenarios = ''; // Store the last generated scenarios for context
+    let conversationHistory = []; // Store chat history for context
+    // let modelType = 'meta-llama-3-8b-instruct'; // Default model
+    let modelType = 'meta-llama-3.1-8b-instruct'; // Default model
+
+    // Config
+    const API_BASE = () => document.getElementById('api-url').value;
+
+    // Initialize
+    function init() {
+      addMessage('system', 'Kyafir Speculation Engine initialized. Enter a topic to explore connections and potential futures.');
+      setupNetwork();
+      updateActionButtons();
+    }
+
+    // Chat functions
+    function addMessage(type, content, isHTML = false) {
+      const msg = document.createElement('div');
+      msg.className = `message ${type}`;
+      if (isHTML) {
+        msg.innerHTML = content;
+      } else {
+        msg.textContent = content;
+      }
+      document.getElementById('chat-messages').appendChild(msg);
+      msg.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // Chat input functionality
+    async function sendChatMessage() {
+      const input = document.getElementById('chat-input');
+      const question = input.value.trim();
+      if (!question) return;
+
+      input.value = '';
+      const sendBtn = document.getElementById('chat-send-btn');
+      sendBtn.disabled = true;
+      input.disabled = true;
+
+      addMessage('user', question);
+      addMessage('system', 'Thinking...');
+
+      try {
+        // Build context from scenarios and insights
+        let context = `You are a futures researcher helping to explore scenarios and weak signals.\n\n`;
+        
+        if (lastScenarios) {
+          context += `Previously generated scenarios:\n${lastScenarios}\n\n`;
+        }
+        
+        if (Object.keys(arxivInsights).length > 0) {
+          context += `Research insights:\n`;
+          for (const [concept, data] of Object.entries(arxivInsights)) {
+            if (data.summary && data.summary !== 'No recent papers found.') {
+              context += `- ${concept}: ${data.summary}\n`;
+            }
+          }
+          context += `\n`;
+        }
+        
+        context += `Current workspace concepts: ${canvasItems.join(', ')}\n\n`;
+        
+        // Build conversation history
+        const messages = [
+          { role: 'system', content: context },
+          ...conversationHistory,
+          { role: 'user', content: question }
+        ];
+
+        const response = await fetch(`${API_BASE()}/chat/completions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: modelType,
+            messages: messages,
+            temperature: 0.8,
+            max_tokens: 500
+          })
+        });
+
+        if (!response.ok) throw new Error('LLM request failed');
+
+        const data = await response.json();
+        const answer = data.choices[0].message.content;
+
+        // Add to conversation history
+        conversationHistory.push({ role: 'user', content: question });
+        conversationHistory.push({ role: 'assistant', content: answer });
+        
+        // Keep only last 6 messages (3 exchanges) to avoid token limits
+        if (conversationHistory.length > 6) {
+          conversationHistory = conversationHistory.slice(-6);
+        }
+
+        addMessage('assistant', answer);
+      } catch (err) {
+        addMessage('system', 'Could not connect to LM Studio. Make sure it\'s running and the API URL is correct.');
+        console.error(err);
+      } finally {
+        sendBtn.disabled = false;
+        input.disabled = false;
+        input.focus();
+      }
+    }
+
+    // Enable chat input when scenarios are generated
+    function enableChatInput() {
+      const input = document.getElementById('chat-input');
+      const sendBtn = document.getElementById('chat-send-btn');
+      input.disabled = false;
+      sendBtn.disabled = false;
+      input.placeholder = 'Ask a question about the scenarios...';
+    }
+
+    // Main exploration function
+    async function exploreTopic() {
+      const input = document.getElementById('topic-input');
+      const topic = input.value.trim();
+      if (!topic) return;
+
+      currentTopic = topic;
+      input.value = '';
+      addMessage('user', `Explore: ${topic}`);
+      addMessage('system', 'Querying knowledge sources...');
+
+      // Reset state when exploring new topic
+      isFindingSignals = false;
+      hasGeneratedScenarios = false;
+      lastScenarios = '';
+      conversationHistory = [];
+      arxivInsights = {};
+      
+      // Disable chat input until scenarios are generated
+      document.getElementById('chat-input').disabled = true;
+      document.getElementById('chat-send-btn').disabled = true;
+
+      try {
+        // Query both Wikidata and Wikipedia in parallel
+        const [wikidataConnections, wikipediaConnections] = await Promise.all([
+          queryWikidata(topic),
+          queryWikipedia(topic)
+        ]);
+
+        // Merge and deduplicate connections
+        const allConnections = mergeConnections(wikidataConnections, wikipediaConnections);
+        
+        addMessage('assistant', `Found ${allConnections.length} related concepts (${wikidataConnections.length} from Wikidata, ${wikipediaConnections.length} from Wikipedia)`);
+
+        // Build network
+        buildNetwork(topic, allConnections);
+        
+        updateActionButtons();
+
+      } catch (err) {
+        addMessage('system', `Error: ${err.message}`);
+        console.error(err);
+      }
+    }
+
+    // HYBRID - Wikidata SPARQL query with filtered properties
+    async function queryWikidata(topic) {
+      try {
+        const searchUrl = `https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${encodeURIComponent(topic)}&language=en&format=json&origin=*`;
+        const searchRes = await fetch(searchUrl);
+        const searchData = await searchRes.json();
+        
+        if (!searchData.search || searchData.search.length === 0) {
+          addMessage('system', 'No Wikidata entity found for this topic');
+          return [];
+        }
+
+        const entityId = searchData.search[0].id;
+        const entityLabel = searchData.search[0].label;
+        wikidataEntityCache[entityLabel] = entityId;
+        
+        const sparqlQuery = `
+          SELECT DISTINCT ?property ?propertyLabel ?value ?valueLabel WHERE {
+            wd:${entityId} ?p ?value.
+            ?property wikibase:directClaim ?p.
+            
+            FILTER(?p IN (
+              wdt:P31,   # instance of
+              wdt:P279,  # subclass of
+              wdt:P361,  # part of
+              wdt:P527,  # has part
+              wdt:P366,  # use
+              wdt:P2283, # uses
+              wdt:P1269, # facet of
+              wdt:P138,  # named after
+              wdt:P176,  # manufacturer
+              wdt:P452,  # industry
+              wdt:P101,  # field of work
+              wdt:P425,  # field of this occupation
+              wdt:P1056, # product or material produced
+              wdt:P186,  # material used
+              wdt:P1435, # heritage designation
+              wdt:P921,  # main subject
+              wdt:P136,  # genre
+              wdt:P495,  # country of origin
+              wdt:P17    # country
+            ))
+            
+            FILTER(isIRI(?value))
+            SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
+          }
+          LIMIT 30
+        `;
+
+        const url = `https://query.wikidata.org/sparql?query=${encodeURIComponent(sparqlQuery)}&format=json`;
+        const res = await fetch(url);
+        const data = await res.json();
+        
+        const results = data.results.bindings.map(b => ({
+          property: b.property.value,
+          propertyLabel: b.propertyLabel.value,
+          value: b.value.value,
+          valueLabel: b.valueLabel.value,
+          source: 'wikidata'
+        }));
+
+        results.forEach(r => {
+          const match = r.value.match(/\/(Q\d+)$/);
+          if (match) {
+            wikidataEntityCache[r.valueLabel] = match[1];
+          }
+        });
+
+        return results;
+      } catch (err) {
+        console.error('Wikidata query error:', err);
+        return [];
+      }
+    }
+
+    // HYBRID - Wikipedia API for categories and links
+    async function queryWikipedia(topic) {
+      try {
+        const searchUrl = `https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(topic)}&limit=1&format=json&origin=*`;
+        const searchRes = await fetch(searchUrl);
+        const [_, titles] = await searchRes.json();
+        
+        if (!titles || titles.length === 0) {
+          return [];
+        }
+        
+        const pageTitle = titles[0];
+        
+        const pageUrl = `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(pageTitle)}&prop=categories|links&pllimit=30&cllimit=20&format=json&origin=*`;
+        const pageRes = await fetch(pageUrl);
+        const pageData = await pageRes.json();
+        
+        const pages = pageData.query.pages;
+        const pageId = Object.keys(pages)[0];
+        const page = pages[pageId];
+        
+        const connections = [];
+        
+        if (page.categories) {
+          page.categories.forEach(cat => {
+            const cleanCat = cat.title.replace('Category:', '');
+            if (!cleanCat.includes('Articles') && 
+                !cleanCat.includes('Wikipedia') && 
+                !cleanCat.includes('Pages') &&
+                !cleanCat.includes('CS1') &&
+                !cleanCat.includes('All ')) {
+              connections.push({
+                propertyLabel: 'category',
+                valueLabel: cleanCat,
+                source: 'wikipedia'
+              });
+            }
+          });
+        }
+        
+        if (page.links) {
+          page.links.slice(0, 20).forEach(link => {
+            if (!link.title.includes(':') && 
+                !link.title.startsWith('List of') &&
+                !link.title.startsWith('Index of')) {
+              connections.push({
+                propertyLabel: 'related topic',
+                valueLabel: link.title,
+                source: 'wikipedia'
+              });
+            }
+          });
+        }
+        
+        return connections;
+      } catch (err) {
+        console.error('Wikipedia query error:', err);
+        return [];
+      }
+    }
+
+    // Merge connections from both sources and deduplicate
+    function mergeConnections(wikidataResults, wikipediaResults) {
+      const merged = [...wikidataResults];
+      const existingLabels = new Set(wikidataResults.map(r => r.valueLabel.toLowerCase()));
+      
+      wikipediaResults.forEach(wp => {
+        if (!existingLabels.has(wp.valueLabel.toLowerCase())) {
+          merged.push(wp);
+          existingLabels.add(wp.valueLabel.toLowerCase());
+        }
+      });
+      
+      if (merged.length < 10) {
+        const fallback = generateFallbackConnections(currentTopic);
+        fallback.forEach(fb => {
+          if (!existingLabels.has(fb.valueLabel.toLowerCase())) {
+            merged.push(fb);
+          }
+        });
+      }
+      
+      return merged;
+    }
+
+    function generateFallbackConnections(topic) {
+      const themes = ['technology', 'society', 'economy', 'environment', 'culture', 'politics'];
+      const modifiers = ['future', 'impact', 'transformation', 'disruption', 'evolution', 'paradigm shift'];
+      const connections = [];
+      
+      for (let i = 0; i < 15; i++) {
+        const theme = themes[Math.floor(Math.random() * themes.length)];
+        const modifier = modifiers[Math.floor(Math.random() * modifiers.length)];
+        connections.push({
+          propertyLabel: 'conceptual link',
+          valueLabel: `${topic} + ${theme} ${modifier}`,
+          source: 'generated'
+        });
+      }
+      return connections;
+    }
+
+    // Build network visualization
+    function buildNetwork(centerTopic, connections) {
+      nodes = [{ id: centerTopic, label: centerTopic, group: 0, strength: 1.0 }];
+      links = [];
+
+      const propertyGroups = {};
+      connections.forEach(conn => {
+        const key = `${conn.propertyLabel}-${conn.source || 'unknown'}`;
+        if (!propertyGroups[key]) {
+          propertyGroups[key] = Object.keys(propertyGroups).length + 1;
+        }
+      });
+
+      connections.forEach((conn, i) => {
+        const nodeId = conn.valueLabel;
+        if (!nodes.find(n => n.id === nodeId)) {
+          const groupKey = `${conn.propertyLabel}-${conn.source || 'unknown'}`;
+          nodes.push({ 
+            id: nodeId, 
+            label: conn.valueLabel, 
+            group: propertyGroups[groupKey] || 1,
+            strength: Math.random() * 0.5 + 0.3,
+            source: conn.source
+          });
+        }
+        
+        links.push({ 
+          source: centerTopic, 
+          target: nodeId,
+          strength: Math.random() * 0.5 + 0.3,
+          relationship: conn.propertyLabel
+        });
+      });
+
+      renderNetwork();
+    }
+
+    // Network rendering with D3
+    function setupNetwork() {
+      const svg = d3.select('#network-svg');
+      const container = document.getElementById('network');
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+      svg.attr('width', width).attr('height', height);
+    }
+
+    function renderNetwork() {
+      const svg = d3.select('#network-svg');
+      svg.selectAll('*').remove();
+
+      const container = document.getElementById('network');
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+
+      const g = svg.append('g');
+
+      const zoom = d3.zoom()
+        .scaleExtent([0.1, 4])
+        .on('zoom', (event) => {
+          g.attr('transform', event.transform);
+        });
+
+      svg.call(zoom);
+
+      simulation = d3.forceSimulation(nodes)
+        .force('link', d3.forceLink(links).id(d => d.id).distance(d => 150 / d.strength))
+        .force('charge', d3.forceManyBody().strength(-400))
+        .force('center', d3.forceCenter(width / 2, height / 2))
+        .force('collision', d3.forceCollide().radius(30));
+
+      const link = g.append('g')
+        .selectAll('line')
+        .data(links)
+        .join('line')
+        .attr('class', 'link')
+        .attr('stroke-width', d => d.strength * 2);
+
+      const linkLabel = g.append('g')
+        .selectAll('text')
+        .data(links)
+        .join('text')
+        .attr('class', 'link-label')
+        .text(d => d.relationship || 'related to');
+
+      const node = g.append('g')
+        .selectAll('g')
+        .data(nodes)
+        .join('g')
+        .attr('class', 'node')
+        .call(d3.drag()
+          .on('start', dragStarted)
+          .on('drag', dragged)
+          .on('end', dragEnded));
+
+      node.append('circle')
+        .attr('r', d => d.group === 0 ? 12 : 6)
+        .attr('fill', d => d.group === 0 ? '#2a5' : d3.schemeCategory10[d.group % 10])
+        .attr('stroke', '#fff')
+        .attr('stroke-width', 2);
+
+      node.append('text')
+        .text(d => d.label.length > 25 ? d.label.substring(0, 25) + '...' : d.label)
+        .attr('x', 10)
+        .attr('y', 4);
+
+      node.on('click', (event, d) => {
+        addToCanvas(d.label);
+      });
+
+      node.on('mouseover', (event, d) => {
+        showTooltip(event, d);
+      });
+
+      node.on('mouseout', () => {
+        hideTooltip();
+      });
+
+      simulation.on('tick', () => {
+        link
+          .attr('x1', d => d.source.x)
+          .attr('y1', d => d.source.y)
+          .attr('x2', d => d.target.x)
+          .attr('y2', d => d.target.y);
+
+        linkLabel
+          .attr('x', d => (d.source.x + d.target.x) / 2)
+          .attr('y', d => (d.source.y + d.target.y) / 2);
+
+        node.attr('transform', d => `translate(${d.x},${d.y})`);
+      });
+    }
+
+    function dragStarted(event, d) {
+      if (!event.active) simulation.alphaTarget(0.3).restart();
+      d.fx = d.x;
+      d.fy = d.y;
+    }
+
+    function dragged(event, d) {
+      d.fx = event.x;
+      d.fy = event.y;
+    }
+
+    function dragEnded(event, d) {
+      if (!event.active) simulation.alphaTarget(0);
+      d.fx = null;
+      d.fy = null;
+    }
+
+    function showTooltip(event, d) {
+      const tooltip = document.getElementById('tooltip');
+      tooltip.style.display = 'block';
+      tooltip.style.left = event.pageX + 10 + 'px';
+      tooltip.style.top = event.pageY + 10 + 'px';
+      const sourceInfo = d.source ? `<br>Source: ${d.source}` : '';
+      tooltip.innerHTML = `<strong>${d.label}</strong><br>Strength: ${(d.strength * 100).toFixed(0)}%${sourceInfo}<br>Click to add to workspace`;
+    }
+
+    function hideTooltip() {
+      document.getElementById('tooltip').style.display = 'none';
+    }
+
+    // Canvas workspace
+    function addToCanvas(label) {
+      if (canvasItems.includes(label)) return;
+      
+      canvasItems.push(label);
+      const item = document.createElement('div');
+      item.className = 'canvas-item';
+      
+      const labelSpan = document.createElement('span');
+      labelSpan.textContent = label;
+      
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'remove-btn';
+      removeBtn.textContent = '×';
+      removeBtn.onclick = () => removeFromCanvas(label, item);
+      
+      item.appendChild(labelSpan);
+      item.appendChild(removeBtn);
+      item.draggable = true;
+      
+      item.addEventListener('dragstart', (e) => {
+        e.dataTransfer.setData('text/plain', label);
+      });
+      
+      document.getElementById('canvas-items').appendChild(item);
+      addMessage('system', `Added "${label}" to workspace`);
+      updateActionButtons();
+    }
+
+    function removeFromCanvas(label, element) {
+      canvasItems = canvasItems.filter(item => item !== label);
+      element.remove();
+      
+      // Reset state when workspace changes
+      isFindingSignals = false;
+      hasGeneratedScenarios = false;
+      
+      addMessage('system', `Removed "${label}" from workspace`);
+      updateActionButtons();
+    }
+
+    function updateActionButtons() {
+      const findBtn = document.getElementById('find-signals-btn');
+      const speculateBtn = document.getElementById('speculate-btn');
+      
+      // Find Signals button: enabled if there are items and not currently finding signals
+      findBtn.disabled = canvasItems.length === 0 || isFindingSignals;
+      
+      // Speculate button: enabled if there are items AND not currently finding signals
+      // Users can speculate without finding signals, but not while signals are being found
+      speculateBtn.disabled = canvasItems.length === 0 || isFindingSignals;
+    }
+
+    // ===== NODE EXPANSION WITH WIKIPEDIA SUMMARIES =====
+    
+    let wikipediaSummaries = {}; // Cache Wikipedia summaries for context
+    
+    async function expandNode(node) {
+      addMessage('assistant', `Expanding "${node.label}"...`);
+      
+      // Visual feedback - highlight the node
+      d3.selectAll('.node circle')
+        .filter(d => d.id === node.id)
+        .transition()
+        .duration(200)
+        .attr('r', d => (d.group === 0 ? 12 : 6) * 1.5)
+        .transition()
+        .duration(200)
+        .attr('r', d => d.group === 0 ? 12 : 6);
+      
+      try {
+        // Fetch both Wikidata and Wikipedia in parallel
+        const [wikidataConnections, wikipediaConnections, summary] = await Promise.all([
+          queryWikidata(node.label),
+          queryWikipedia(node.label),
+          getWikipediaSummary(node.label)
+        ]);
+        
+        // Store summary for later use in speculation
+        if (summary) {
+          wikipediaSummaries[node.label] = summary;
+          addMessage('system', `Retrieved Wikipedia context for "${node.label}"`);
+        }
+        
+        const newConnections = mergeConnections(wikidataConnections, wikipediaConnections);
+        
+        if (newConnections.length > 0) {
+          addMessage('assistant', `Found ${newConnections.length} connections for "${node.label}"`);
+          expandNetwork(node.label, newConnections);
+        } else {
+          addMessage('system', `No additional connections found for "${node.label}"`);
+        }
+      } catch (err) {
+        console.error('Error expanding node:', err);
+        addMessage('system', `Error expanding "${node.label}": ${err.message}`);
+      }
+    }
+    
+    // Get Wikipedia summary/extract for context
+    async function getWikipediaSummary(topic) {
+      try {
+        // First search for the page
+        const searchUrl = `https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(topic)}&limit=1&format=json&origin=*`;
+        const searchRes = await fetch(searchUrl);
+        const [_, titles] = await searchRes.json();
+        
+        if (!titles || titles.length === 0) {
+          return null;
+        }
+        
+        const pageTitle = titles[0];
+        
+        // Get the extract (summary)
+        const extractUrl = `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(pageTitle)}&prop=extracts&exintro=true&explaintext=true&format=json&origin=*`;
+        const extractRes = await fetch(extractUrl);
+        const extractData = await extractRes.json();
+        
+        const pages = extractData.query.pages;
+        const pageId = Object.keys(pages)[0];
+        const extract = pages[pageId].extract;
+        
+        if (extract && extract.length > 100) {
+          // Trim to ~500 chars for context
+          return extract.substring(0, 500) + '...';
+        }
+        
+        return null;
+      } catch (err) {
+        console.error('Wikipedia summary error:', err);
+        return null;
+      }
+    }
+    
+    // Expand network with new connections
+    function expandNetwork(centerLabel, newConnections) {
+      const existingNodeIds = new Set(nodes.map(n => n.id));
+      let addedCount = 0;
+      
+      newConnections.forEach(conn => {
+        const nodeId = conn.valueLabel;
+        if (!existingNodeIds.has(nodeId)) {
+          nodes.push({
+            id: nodeId,
+            label: conn.valueLabel,
+            group: Math.floor(Math.random() * 10) + 1,
+            strength: Math.random() * 0.5 + 0.3,
+            source: conn.source
+          });
+          existingNodeIds.add(nodeId);
+          addedCount++;
+        }
+        
+        // Check if link already exists
+        const linkExists = links.some(l => 
+          (l.source.id === centerLabel && l.target === nodeId) ||
+          (l.target.id === centerLabel && l.source === nodeId)
+        );
+        
+        if (!linkExists) {
+          links.push({
+            source: centerLabel,
+            target: nodeId,
+            strength: Math.random() * 0.5 + 0.3,
+            relationship: conn.propertyLabel
+          });
+        }
+      });
+      
+      if (addedCount > 0) {
+        addMessage('system', `Added ${addedCount} new nodes to the network`);
+        renderNetwork();
+      }
+    }
+
+    // ===== ARXIV INTEGRATION =====
+    
+    // Step 1: Find Leading Signals from arXiv + Google Scholar (ADDITIVE - only fetch new concepts)
+    async function findLeadingSignals() {
+      if (canvasItems.length === 0) {
+        addMessage('system', 'Add some concepts to the workspace first');
+        return;
+      }
+
+      const findBtn = document.getElementById('find-signals-btn');
+      const speculateBtn = document.getElementById('speculate-btn');
+      
+      isFindingSignals = true; // Block speculation while finding signals
+      updateActionButtons();
+      
+      findBtn.innerHTML = 'Finding Signals<span class="spinner"></span>';
+
+      // Determine which concepts are new (don't have insights yet)
+      const newConcepts = canvasItems.filter(concept => !arxivInsights[concept]);
+      const existingConcepts = canvasItems.filter(concept => arxivInsights[concept]);
+
+      if (newConcepts.length === 0) {
+        addMessage('system', 'All concepts already have leading signals. Ready to speculate!');
+        isFindingSignals = false;
+        updateActionButtons();
+        findBtn.textContent = 'Find Leading Signals';
+        return;
+      }
+
+      addMessage('user', 'Find Leading Signals');
+      
+      if (existingConcepts.length > 0) {
+        addMessage('system', `Using existing insights for: ${existingConcepts.join(', ')}`);
+      }
+      
+      addMessage('system', `Querying academic sources for new concepts: ${newConcepts.join(', ')}`);
+
+      try {
+        // Query both arXiv AND Google Scholar for NEW concepts
+        for (const concept of newConcepts) {
+          addMessage('system', `Searching arXiv and Google Scholar for: ${concept}...`);
+          
+          // Query both sources in parallel
+          const [arxivPapers, scholarPapers] = await Promise.all([
+            queryArxiv(concept),
+            queryGoogleScholar(concept)
+          ]);
+          
+          // Merge results
+          const allPapers = [...arxivPapers, ...scholarPapers];
+          
+          if (allPapers.length > 0) {
+            addMessage('assistant', `Found ${arxivPapers.length} arXiv papers + ${scholarPapers.length} Google Scholar papers for "${concept}"`);
+            
+            // Summarize with LLM
+            const summary = await summarizePapers(concept, allPapers);
+            arxivInsights[concept] = { papers: allPapers, summary };
+            
+            // Display insights
+            displayInsights(concept, allPapers, summary);
+          } else {
+            addMessage('system', `No recent papers found for "${concept}"`);
+            // Store empty result so we don't re-fetch
+            arxivInsights[concept] = { papers: [], summary: 'No recent papers found.' };
+          }
+        }
+
+        addMessage('assistant', `Leading signals analysis complete (${newConcepts.length} new, ${existingConcepts.length} cached). Ready to speculate!`);
+        
+      } catch (err) {
+        addMessage('system', `Error finding signals: ${err.message}`);
+        console.error(err);
+      } finally {
+        isFindingSignals = false;
+        findBtn.textContent = 'Find Leading Signals';
+        updateActionButtons();
+      }
+    }
+
+    // Query Google Scholar using web scraping approach
+    async function queryGoogleScholar(query) {
+      try {
+        const searchQuery = encodeURIComponent(query);
+        // Use a search aggregator API that includes Scholar results
+        // We'll use a simple HTML scraping approach via CORS proxy
+        const scholarUrl = `https://scholar.google.com/scholar?q=${searchQuery}&hl=en&as_sdt=0,5&num=10`;
+        
+        // Try CORS proxy
+        const proxies = [
+          `https://corsproxy.io/?${encodeURIComponent(scholarUrl)}`,
+          `https://api.allorigins.win/get?url=${encodeURIComponent(scholarUrl)}`
+        ];
+        
+        let htmlText = null;
+        
+        for (const url of proxies) {
+          try {
+            const response = await fetch(url);
+            if (response.ok) {
+              const data = await response.json();
+              htmlText = data.contents || await response.text();
+              break;
+            }
+          } catch (err) {
+            continue;
+          }
+        }
+        
+        if (!htmlText) {
+          console.log('Google Scholar fetch failed, continuing without it');
+          return [];
+        }
+        
+        // Parse HTML to extract paper info
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(htmlText, 'text/html');
+        const papers = [];
+        
+        // Google Scholar uses class "gs_ri" for each result
+        const results = doc.querySelectorAll('.gs_ri');
+        
+        results.forEach((result, index) => {
+          if (index >= 5) return; // Limit to 5 results
+          
+          const titleEl = result.querySelector('h3.gs_rt a');
+          const snippetEl = result.querySelector('.gs_rs');
+          const authorsEl = result.querySelector('.gs_a');
+          
+          if (titleEl && snippetEl) {
+            const title = titleEl.textContent.trim();
+            const snippet = snippetEl.textContent.trim();
+            const authors = authorsEl ? authorsEl.textContent.split('-')[0].trim() : 'Unknown';
+            const link = titleEl.getAttribute('href') || '';
+            
+            papers.push({
+              title,
+              summary: snippet,
+              authors,
+              link,
+              published: new Date().toISOString(), // Scholar doesn't always have clear dates
+              source: 'scholar'
+            });
+          }
+        });
+        
+        return papers;
+      } catch (err) {
+        console.error('Google Scholar query error:', err);
+        return []; // Fail gracefully, arXiv results will still work
+      }
+    }
+
+    // Query arXiv API (with multiple fallback strategies)
+    async function queryArxiv(query) {
+      try {
+        const searchQuery = encodeURIComponent(query);
+        // Fetch 20 papers for trend analysis, but will show only top 5 in UI
+        const arxivUrl = `https://export.arxiv.org/api/query?search_query=all:${searchQuery}&start=0&max_results=20&sortBy=submittedDate&sortOrder=descending`;
+        
+        // Try multiple CORS proxies in order
+        const proxies = [
+          `https://corsproxy.io/?${encodeURIComponent(arxivUrl)}`,
+          `https://api.allorigins.win/raw?url=${encodeURIComponent(arxivUrl)}`,
+          arxivUrl // Direct attempt as last resort
+        ];
+        
+        let xmlText = null;
+        let lastError = null;
+        
+        for (const url of proxies) {
+          try {
+            const response = await fetch(url);
+            if (response.ok) {
+              xmlText = await response.text();
+              break;
+            }
+          } catch (err) {
+            lastError = err;
+            continue;
+          }
+        }
+        
+        if (!xmlText) {
+          throw new Error(`Failed to fetch from arXiv: ${lastError?.message || 'All proxies failed'}`);
+        }
+        
+        // Parse XML
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+        
+        const entries = xmlDoc.getElementsByTagName('entry');
+        const papers = [];
+        
+        for (let i = 0; i < entries.length; i++) {
+          const entry = entries[i];
+          
+          const title = entry.getElementsByTagName('title')[0]?.textContent.trim();
+          const summary = entry.getElementsByTagName('summary')[0]?.textContent.trim();
+          const published = entry.getElementsByTagName('published')[0]?.textContent.trim();
+          const link = entry.getElementsByTagName('id')[0]?.textContent.trim();
+          
+          if (title && summary) {
+            papers.push({
+              title,
+              summary,
+              published,
+              link
+            });
+          }
+        }
+        
+        return papers;
+      } catch (err) {
+        console.error('arXiv query error:', err);
+        return [];
+      }
+    }
+
+    // Summarize papers with LLM and detect trends
+    async function summarizePapers(concept, papers) {
+      try {
+        // TREND DETECTION: Analyze publication dates (primarily from arXiv which has reliable dates)
+        const arxivPapers = papers.filter(p => !p.source || p.source !== 'scholar');
+        const trendAnalysis = analyzeTrends(arxivPapers, concept);
+        
+        const papersText = papers.slice(0, 10).map((p, i) => {
+          const source = p.source === 'scholar' ? '[Google Scholar]' : '[arXiv]';
+          return `Paper ${i + 1} ${source}: "${p.title}"\n${p.authors ? `Authors: ${p.authors}\n` : ''}Abstract: ${p.summary.substring(0, 250)}...`;
+        }).join('\n\n');
+
+        const sourceBreakdown = `Sources: ${papers.filter(p => !p.source || p.source !== 'scholar').length} arXiv papers, ${papers.filter(p => p.source === 'scholar').length} Google Scholar papers`;
+
+        const prompt = `You are a futures researcher analyzing leading indicators and weak signals. 
+
+Given these recent research papers about "${concept}":
+
+${papersText}
+
+${trendAnalysis ? `\nTrend insight: ${trendAnalysis}\n` : ''}
+${sourceBreakdown}
+
+Identify 2-3 key insights or leading indicators that suggest emerging trends or future developments. Focus on:
+- Novel applications or approaches
+- Convergence with other fields
+- Potential societal/technological impacts
+- Weak signals of change
+
+Keep your response concise (3-4 sentences total).`;
+
+        const response = await fetch(`${API_BASE()}/chat/completions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: modelType,
+            messages: [{ role: 'user', content: prompt }],
+            temperature: 0.7,
+            max_tokens: 250
+          })
+        });
+
+        if (!response.ok) throw new Error('LLM request failed');
+
+        const data = await response.json();
+        let summary = data.choices[0].message.content;
+        
+        // Prepend trend analysis if available
+        if (trendAnalysis) {
+          summary = `📈 ${trendAnalysis}\n\n${summary}`;
+        }
+        
+        return summary;
+      } catch (err) {
+        console.error('LLM summarization error:', err);
+        return 'Unable to generate summary - LLM not available.';
+      }
+    }
+    
+    // Analyze publication trends
+    function analyzeTrends(papers, concept) {
+      if (papers.length < 3) return null;
+      
+      try {
+        // Parse publication dates
+        const dates = papers.map(p => new Date(p.published));
+        const now = new Date();
+        
+        // Count papers by time period
+        const last3Months = dates.filter(d => (now - d) / (1000 * 60 * 60 * 24) <= 90).length;
+        const last6Months = dates.filter(d => (now - d) / (1000 * 60 * 60 * 24) <= 180).length;
+        const lastYear = dates.filter(d => (now - d) / (1000 * 60 * 60 * 24) <= 365).length;
+        
+        // Simple growth calculation
+        const recentActivity = last3Months / 3; // avg per month
+        const olderActivity = (last6Months - last3Months) / 3; // avg per month in months 3-6
+        
+        if (olderActivity > 0 && recentActivity > olderActivity) {
+          const growthRate = ((recentActivity - olderActivity) / olderActivity * 100).toFixed(0);
+          if (growthRate > 50) {
+            return `Research activity increased ${growthRate}% in the last 3 months`;
+          }
+        }
+        
+        // Check for consistent activity
+        if (lastYear >= 4) {
+          return `Steady research activity with ${lastYear} papers in the last year`;
+        }
+        
+        return null;
+      } catch (err) {
+        console.error('Trend analysis error:', err);
+        return null;
+      }
+    }
+
+    // Display insights in chat
+    function displayInsights(concept, papers, summary) {
+      let html = `<div class="arxiv-insight">`;
+      html += `<h4>📊 Leading Signals: ${concept}</h4>`;
+      
+      // Separate papers by source
+      const arxivPapers = papers.filter(p => !p.source || p.source !== 'scholar');
+      const scholarPapers = papers.filter(p => p.source === 'scholar');
+      
+      // Show top 3 papers total, mixing sources
+      const displayPapers = papers.slice(0, 3);
+      
+      displayPapers.forEach((paper, i) => {
+        const sourceLabel = paper.source === 'scholar' ? '📚 Scholar' : '📄 arXiv';
+        html += `<div class="paper">`;
+        html += `<div class="paper-title">${i + 1}. ${paper.title} <span style="color: #888; font-size: 9px;">[${sourceLabel}]</span></div>`;
+        if (paper.authors) {
+          html += `<div style="font-size: 10px; color: #666; margin-top: 2px;">${paper.authors}</div>`;
+        }
+        html += `<div style="font-size: 10px; color: #777;">${new Date(paper.published).toLocaleDateString()}</div>`;
+        html += `</div>`;
+      });
+      
+      if (papers.length > 3) {
+        html += `<div style="font-size: 10px; color: #888; margin-top: 5px;">...and ${papers.length - 3} more papers analyzed (${arxivPapers.length} arXiv, ${scholarPapers.length} Scholar)</div>`;
+      } else {
+        html += `<div style="font-size: 10px; color: #888; margin-top: 5px;">Sources: ${arxivPapers.length} arXiv, ${scholarPapers.length} Scholar</div>`;
+      }
+      
+      html += `<div class="summary"><strong>Key Insights:</strong> ${summary}</div>`;
+      html += `</div>`;
+      
+      addMessage('insights', html, true);
+    }
+
+    // Step 2: Generate scenarios using insights
+    function formatScenarios(rawText) {
+      let text = rawText.replace(/\*\*/g, '');
+      text = text.replace(/(Scenario \d+:)/g, '<br><strong>$1</strong>');
+      text = text.replace(/(<br><strong>Scenario \d+:<\/strong><br>)/g, '$1<br>');
+      return text;
+    }
+
+    async function generateScenarios() {
+      if (canvasItems.length === 0) {
+        addMessage('system', 'Add some concepts to the workspace first');
+        return;
+      }
+
+      if (isFindingSignals) {
+        addMessage('system', 'Please wait for signal finding to complete before speculating');
+        return;
+      }
+
+      const speculateBtn = document.getElementById('speculate-btn');
+      speculateBtn.disabled = true;
+      speculateBtn.innerHTML = 'Speculating<span class="spinner"></span>';
+
+      addMessage('user', 'Speculate on future scenarios');
+      addMessage('system', 'Analyzing workspace concepts and generating scenarios...');
+
+      try {
+        const concepts = canvasItems.join(', ');
+        
+        // Build context from Wikipedia summaries if available
+        let wikiContext = '';
+        const conceptsWithSummaries = canvasItems.filter(c => wikipediaSummaries[c]);
+        if (conceptsWithSummaries.length > 0) {
+          wikiContext = '\n\nBackground context:\n';
+          conceptsWithSummaries.forEach(concept => {
+            wikiContext += `- ${concept}: ${wikipediaSummaries[concept].substring(0, 200)}...\n`;
+          });
+        }
+        
+        // Build context from arXiv insights if available
+        let insightsContext = '';
+        if (Object.keys(arxivInsights).length > 0) {
+          insightsContext = '\n\nRecent research insights:\n';
+          for (const [concept, data] of Object.entries(arxivInsights)) {
+            if (data.summary && data.summary !== 'No recent papers found.') {
+              insightsContext += `- ${concept}: ${data.summary}\n`;
+            }
+          }
+        }
+
+        const prompt = `You are a futures researcher analyzing weak signals and emerging trends. 
+
+Given these interconnected concepts: ${concepts}${wikiContext}${insightsContext}
+
+Identify 3 potential future scenarios or weak cultural signals. Be creative and look for non-obvious connections between these concepts${insightsContext ? ' and the research insights provided' : ''}. 
+
+Each scenario should:
+- Be 2-3 sentences long
+- Connect multiple concepts in unexpected ways
+- Highlight emerging possibilities or tensions
+- Feel plausible yet surprising
+
+Format as:
+Scenario 1: [title/description]
+Scenario 2: [title/description]  
+Scenario 3: [title/description]`;
+
+        const response = await fetch(`${API_BASE()}/chat/completions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: modelType,
+            messages: [{ role: 'user', content: prompt }],
+            temperature: 0.85,
+            max_tokens: 400
+          })
+        });
+
+        if (!response.ok) throw new Error('LLM request failed');
+
+        const data = await response.json();
+        let scenarios = data.choices[0].message.content;
+
+        const formatted = formatScenarios(scenarios);
+        addMessage('assistant', formatted, true);
+        
+        // Store scenarios for chat context
+        lastScenarios = scenarios;
+        hasGeneratedScenarios = true;
+        
+        // Enable chat input after scenarios are generated
+        enableChatInput();
+        
+      } catch (err) {
+        addMessage('system', 'Could not connect to LM Studio. Make sure it\'s running and the API URL is correct.');
+        console.error(err);
+      } finally {
+        speculateBtn.disabled = false;
+        speculateBtn.textContent = 'Speculate';
+      }
+    }
+
+    // Initialize on load
+    window.onload = init;
+    window.onresize = () => {
+      if (nodes.length > 0) renderNetwork();
+    };
+
+    document.getElementById('topic-input').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') exploreTopic();
+    });
+
+    document.getElementById('chat-input').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') sendChatMessage();
+    });
+
+    // ===== DRAGGABLE RESIZE HANDLES =====
+    
+    function initResizeHandles() {
+      const resizeChat = document.getElementById('resize-chat');
+      const resizeNetwork = document.getElementById('resize-network');
+      const body = document.body;
+      
+      let isResizing = false;
+      let currentHandle = null;
+      let startX = 0;
+      let startWidths = [];
+      
+      function startResize(e, handle) {
+        isResizing = true;
+        currentHandle = handle;
+        startX = e.clientX;
+        
+        // Get current grid column widths
+        const computedStyle = window.getComputedStyle(body);
+        const gridColumns = computedStyle.gridTemplateColumns.split(' ');
+        startWidths = gridColumns.map(w => parseFloat(w));
+        
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+        
+        e.preventDefault();
+      }
+      
+      function doResize(e) {
+        if (!isResizing) return;
+        
+        const deltaX = e.clientX - startX;
+        
+        if (currentHandle === resizeChat) {
+          // Resizing between chat and network
+          const newChatWidth = Math.max(200, Math.min(800, startWidths[0] + deltaX));
+          const networkWidth = startWidths[2] - deltaX;
+          
+          if (networkWidth >= 300) {
+            body.style.gridTemplateColumns = `${newChatWidth}px 5px 1fr 5px ${startWidths[4]}px`;
+          }
+        } else if (currentHandle === resizeNetwork) {
+          // Resizing between network and canvas
+          const newCanvasWidth = Math.max(250, Math.min(800, startWidths[4] - deltaX));
+          
+          body.style.gridTemplateColumns = `${startWidths[0]}px 5px 1fr 5px ${newCanvasWidth}px`;
+        }
+        
+        // Update network visualization if it exists
+        if (nodes.length > 0) {
+          setTimeout(() => renderNetwork(), 0);
+        }
+      }
+      
+      function stopResize() {
+        if (isResizing) {
+          isResizing = false;
+          currentHandle = null;
+          document.body.style.cursor = '';
+          document.body.style.userSelect = '';
+        }
+      }
+      
+      resizeChat.addEventListener('mousedown', (e) => startResize(e, resizeChat));
+      resizeNetwork.addEventListener('mousedown', (e) => startResize(e, resizeNetwork));
+      document.addEventListener('mousemove', doResize);
+      document.addEventListener('mouseup', stopResize);
+    }
+    
+    // Initialize resize handles
+    initResizeHandles();
+  </script>
+</body>
+</html>
