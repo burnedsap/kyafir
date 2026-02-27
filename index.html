@@ -1,1578 +1,1385 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kyafir Speculation Engine</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { 
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      display: grid;
-      grid-template-columns: 300px 5px 1fr 5px 350px;
-      grid-template-rows: 60px 1fr;
-      height: 100vh;
-      background: #0a0a0a;
-      color: #e0e0e0;
-    }
-    
-    .resize-handle {
-      background: #333;
-      cursor: col-resize;
-      position: relative;
-    }
-    
-    .resize-handle:hover {
-      background: #3d0079;
-    }
-    
-    .resize-handle:active {
-      background: #3d0079;
-    }
-    #header {
-      grid-column: 1 / -1;
-      background: #111;
-      padding: 15px 20px;
-      border-bottom: 1px solid #333;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    #header input {
-      flex: 1;
-      padding: 8px 12px;
-      background: #1a1a1a;
-      border: 1px solid #333;
-      color: #e0e0e0;
-      border-radius: 4px;
-    }
-    #header button {
-      padding: 8px 16px;
-      background: #3d0079;
-      border: none;
-      color: white;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-    #header button:hover { background: #3b6; }
-    #chat {
-      background: #111;
-      border-right: 1px solid #333;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-    #chat-messages {
-      flex: 1;
-      overflow-y: auto;
-      padding: 15px;
-    }
-    #chat-input-container {
-      padding: 10px;
-      background: #1a1a1a;
-      border-top: 1px solid #333;
-      display: flex;
-      gap: 8px;
-    }
-    #chat-input-container input {
-      flex: 1;
-      padding: 8px 12px;
-      background: #0a0a0a;
-      border: 1px solid #333;
-      color: #e0e0e0;
-      border-radius: 4px;
-      font-size: 13px;
-    }
-    #chat-input-container input::placeholder {
-      color: #666;
-    }
-    #chat-input-container button {
-      padding: 8px 16px;
-      background: #3d0079;
-      border: none;
-      color: white;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 13px;
-    }
-    #chat-input-container button:hover {
-      background: #4d0099;
-    }
-    #chat-input-container button:disabled {
-      background: #333;
-      cursor: not-allowed;
-      color: #666;
-    }
-    .message {
-      margin-bottom: 15px;
-      padding: 8px 12px;
-      border-radius: 4px;
-      font-size: 13px;
-      line-height: 1.5;
-    }
-    .message.user { background: #1a3a4a; }
-    .message.system { background: #1a1a1a; color: #888; font-style: italic; }
-    .message.assistant { background: #2a2a2a; }
-    .message.insights { background: #2a1a4a; border-left: 3px solid #3d0079; }
-    #network {
-      background: #0a0a0a;
-      position: relative;
-      overflow: hidden;
-    }
-    #canvas {
-      background: #111;
-      border-left: 1px solid #333;
-      padding: 15px;
-      overflow-y: auto;
-      height: 100%;
-    }
-    /* Make WORKSPACE and NOTEPAD share vertical space */
-    #workspace-container {
-      flex: 4;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FORESIGHT — Research & Speculation Engine</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<style>
 
-    #notepad-container {
-      flex: 6;
-      display: flex;
-      flex-direction: column;
-      margin-top: 10px;
-      overflow: hidden;
-      height: 87%;
-    }
+@font-face {
+  font-family: 'SerifFont';
+  src: url('fonts/PPMigra-Regular.woff2') format('woff2'),
+       url('fonts/PPMigra-Regular.woff') format('woff');
+  font-weight: 400;
+  font-style: normal;
+}
 
-    #notepad-container textarea {
-      width: 100%;
-      height: 100%;
-      padding: 10px;
-      background: #1a1a1a;
-      border: 1px solid #333;
-      border-radius: 4px;
-      color: #e0e0e0;
-      resize: none;
-      font-size: 13px;
-      box-sizing: border-box;
-      overflow-y: auto;
-    }
-    #canvas h3 {
-      font-size: 14px;
-      margin-bottom: 10px;
-      color: #888;
-    }
-    .canvas-item {
-      background: #1a1a1a;
-      padding: 8px 12px;
-      margin-bottom: 8px;
-      border-radius: 4px;
-      border: 1px solid #333;
-      cursor: move;
-      font-size: 12px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .canvas-item:hover { border-color: #2a5; }
-    .canvas-item .remove-btn {
-      background: #a22;
-      color: white;
-      border: none;
-      padding: 2px 8px;
-      border-radius: 3px;
-      cursor: pointer;
-      font-size: 11px;
-      margin-left: 10px;
-    }
-    .canvas-item .remove-btn:hover { background: #c33; }
-    
-    /* Button styling */
-    .action-btn {
-      width: 100%;
-      padding: 10px;
-      border: none;
-      color: white;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 13px;
-      margin-top: 8px;
-      font-weight: 500;
-    }
-    
-    #find-signals-btn {
-      background: #3d0079;
-    }
-    #find-signals-btn:hover { background: #4d0099; }
-    
-    #speculate-btn {
-      background: #0079aa;
-    }
-    #speculate-btn:hover { background: #0099dd; }
-    
-    .action-btn:disabled {
-      background: #333;
-      cursor: not-allowed;
-      color: #666;
-    }
-    
-    /* arXiv insights display */
-    .arxiv-insight {
-      background: #1a1a2a;
-      border-left: 3px solid #3d0079;
-      padding: 10px;
-      margin-bottom: 10px;
-      border-radius: 4px;
-    }
-    .arxiv-insight h4 {
-      color: #3d0079;
-      font-size: 12px;
-      margin-bottom: 5px;
-    }
-    .arxiv-insight .paper {
-      font-size: 11px;
-      color: #aaa;
-      margin-bottom: 8px;
-      padding-left: 8px;
-      border-left: 2px solid #333;
-    }
-    .arxiv-insight .paper-title {
-      color: #e0e0e0;
-      font-weight: 500;
-    }
-    .arxiv-insight .summary {
-      color: #ccc;
-      font-size: 12px;
-      margin-top: 8px;
-      font-style: italic;
-    }
-    
-    .node circle { cursor: pointer; }
-    .node:hover circle { stroke-width: 3px; }
-    .link { stroke: #444; stroke-opacity: 0.6; }
-    .node text {
-      font-size: 11px;
-      fill: #e0e0e0;
-      pointer-events: none;
-    }
-    .link-label {
-      font-size: 9px;
-      fill: #888;
-      pointer-events: none;
-      text-anchor: middle;
-    }
-    #tooltip {
-      position: absolute;
-      background: #1a1a1a;
-      border: 1px solid #3d0079;
-      padding: 10px;
-      border-radius: 4px;
-      font-size: 12px;
-      display: none;
-      max-width: 250px;
-      z-index: 1000;
-    }
-    #settings {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      background: #1a1a1a;
-      padding: 5px;
-      border: 1px solid #333;
-      border-radius: 4px;
-      font-size: 11px;
-    }
-    #settings label { display: block; margin-bottom: 5px; color: #888; }
-    #settings input[type="text"] {
-      width: 100%;
-      padding: 4px;
-      background: #0a0a0a;
-      border: 1px solid #333;
-      color: #e0e0e0;
-      margin-bottom: 8px;
-    }
-    img {
-      height: 100%
-    }
-    
-    /* Loading spinner */
-    .spinner {
-      display: inline-block;
-      width: 12px;
-      height: 12px;
-      border: 2px solid #333;
-      border-top-color: #3d0079;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin-left: 8px;
-    }
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-  </style>
+@font-face {
+  font-family: 'SansSerifFont';
+  src: url('fonts/PPNeueMontreal-Regular.woff2') format('woff2'),
+       url('fonts/PPNeueMontreal-Regular.woff') format('woff');
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'SansSerifFont';
+  src: url('fonts/PPNeueMontreal-Medium.woff2') format('woff2'),
+       url('fonts/PPNeueMontreal-Medium.woff') format('woff');
+  font-weight: 500;
+}
+
+@font-face {
+  font-family: 'MonoFont';
+  src: url('fonts/PPFraktionMono-Regular.woff2') format('woff2'),
+       url('fonts/PPFraktionMono-Regular.woff') format('woff');
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'MonoFont';
+  src: url('fonts/PPFraktionMono-Light.woff2') format('woff2'),
+       url('fonts/PPFraktionMono-Light.woff') format('woff');
+  font-weight: 300;
+}
+
+:root {
+  --bg: #09090f; --surface: #0f0f1a; --surface2: #141422; --surface3: #1a1a2e;
+  --border: rgba(255,255,255,0.06); --border2: rgba(255,255,255,0.12);
+  --amber: #f5a623; --amber-dim: rgba(245,166,35,0.15);
+  --teal: #2dd4bf; --teal-dim: rgba(45,212,191,0.12);
+  --rose: #fb7185; --rose-dim: rgba(251,113,133,0.12);
+  --violet: #a78bfa; --violet-dim: rgba(167,139,250,0.12);
+  --text: #c8c8d8; --text-dim: #5a5a78; --text-bright: #f0f0ff; --green: #4ade80;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: 'SansSerifFont', sans-serif; font-size: 13px; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+#header { display: flex; align-items: center; padding: 0 20px; height: 48px; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; position: relative; }
+.wordmark { font-family: 'SerifFont', serif; font-size: 20px; color: var(--text-bright); letter-spacing: 0.04em; margin-right: 32px; white-space: nowrap; }
+.wordmark em { font-style: italic; color: var(--amber); }
+.wordmark img { max-height: 30px; }
+.nav-tabs { display: flex; height: 100%; }
+.nav-tab { display: flex; align-items: center; gap: 7px; padding: 0 20px; height: 100%; font-family: 'MonoFont', monospace; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-dim); cursor: pointer; border: none; background: transparent; border-bottom: 2px solid transparent; transition: all 0.2s; white-space: nowrap; }
+.nav-tab:hover { color: var(--text); }
+.nav-tab.active { color: var(--amber); border-bottom-color: var(--amber); }
+.nav-tab .tab-num { color: var(--text-dim); font-size: 12px; }
+.nav-tab.active .tab-num { color: var(--amber); opacity: 0.6; }
+.status-pill { margin-left: auto; display: flex; align-items: center; gap: 8px; font-family: 'MonoFont', monospace; font-size: 11px; color: var(--text-dim); }
+.status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-dim); transition: all 0.3s; flex-shrink: 0; }
+.status-dot.ok { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.status-dot.err { background: var(--rose); }
+.status-dot.thinking { background: var(--amber); animation: blink 1s infinite; }
+@keyframes blink { 0%,100% { opacity:1; } 50% { opacity:0.2; } }
+#shell { flex: 1; display: grid; grid-template-columns: 280px 1fr; overflow: hidden; }
+#sidebar { display: flex; flex-direction: column; background: var(--surface); border-right: 1px solid var(--border); overflow: hidden; }
+.sb-block { padding: 14px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.sb-label { font-family: 'MonoFont', monospace; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 9px; display: flex; justify-content: space-between; align-items: center; }
+textarea.topic { width: 100%; background: var(--surface2); border: 1px solid var(--border2); border-radius: 5px; color: var(--text-bright); font-family: 'SansSerifFont', sans-serif; font-size: 13px; line-height: 1.6; padding: 9px 11px; resize: none; outline: none; min-height: 76px; transition: border-color 0.2s; }
+textarea.topic:focus { border-color: var(--amber); }
+textarea.topic::placeholder { color: var(--text-dim); font-style: italic; }
+input.guide-input { width: 100%; background: var(--surface2); border: 1px solid var(--border2); border-radius: 5px; color: var(--text-bright); font-family: 'SansSerifFont', sans-serif; font-size: 12px; padding: 7px 11px; outline: none; transition: border-color 0.2s; }
+input.guide-input:focus { border-color: var(--teal); }
+input.guide-input::placeholder { color: var(--text-dim); font-style: italic; }
+strong { font-weight: 500;}
+.btn { font-family: 'MonoFont', monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; padding: 7px 13px; border-radius: 4px; border: 1px solid transparent; cursor: pointer; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.btn-amber { background: var(--amber); color: #0a0a0a; font-weight: 500; }
+.btn-amber:hover { background: #f7b84a; }
+.btn-amber:disabled { opacity: 0.35; cursor: not-allowed; }
+.btn-teal { background: transparent; border-color: var(--teal); color: var(--teal); }
+.btn-teal:hover { background: var(--teal-dim); }
+.btn-teal:disabled { opacity: 0.35; cursor: not-allowed; }
+.btn-ghost { background: transparent; border-color: var(--border2); color: var(--text-dim); }
+.btn-ghost:hover { color: var(--text); border-color: rgba(255,255,255,0.22); }
+.btn-ghost:disabled { opacity: 0.35; cursor: not-allowed; }
+.btn-rose { background: transparent; border-color: var(--rose); color: var(--rose); }
+.btn-rose:hover { background: var(--rose-dim); }
+.btn-saved { background: transparent !important; border-color: var(--green) !important; color: var(--green) !important; }
+.chip-container { display: flex; flex-wrap: wrap; gap: 5px; max-height: 130px; overflow-y: auto; }
+.chip { font-family: 'MonoFont', monospace; font-size: 9px; padding: 2px 7px; border-radius: 3px; border: 1px solid; line-height: 1.5; }
+.chip-core { border-color: rgba(245,166,35,0.5); background: rgba(245,166,35,0.08); color: var(--amber); }
+.chip-adj { border-color: rgba(45,212,191,0.4); background: rgba(45,212,191,0.07); color: var(--teal); }
+.chip-guide { border-color: rgba(251,113,133,0.4); background: rgba(251,113,133,0.07); color: var(--rose); }
+.chip-found { border-color: rgba(167,139,250,0.4); background: rgba(167,139,250,0.07); color: var(--violet); }
+#research-log { flex: 1; overflow-y: auto; padding: 10px; }
+.log-line { display: flex; gap: 8px; padding: 2px 0; font-family: 'MonoFont', monospace; font-size: 9.5px; line-height: 1.6; border-bottom: 1px solid rgba(255,255,255,0.02); }
+.log-t { color: var(--text-dim); flex-shrink: 0; }
+.log-ok { color: var(--green); } .log-info { color: var(--teal); } .log-warn { color: var(--amber); } .log-err { color: var(--rose); } .log-default { color: var(--text); }
+#content { display: flex; flex-direction: column; overflow: hidden; }
+.panel { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+.panel.active { display: flex; }
+#panel-research { display: none; flex-direction: column; overflow: hidden; }
+#panel-research.active { display: flex; }
+.research-top { padding: 24px 28px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.hero-prompt { font-family: 'SerifFont', serif; font-size: 30px; line-height: 1.25; color: var(--text-bright); }
+.hero-prompt em { font-style: italic; color: var(--amber); }
+.research-sub { margin-top: 8px; color: var(--text-dim); line-height: 1.75; font-size: 12px; max-width: 580px; }
+.progress-wrap { background: var(--border); border-radius: 2px; height: 2px; overflow: hidden; margin-top: 12px; }
+.progress-bar { height: 100%; background: linear-gradient(90deg, var(--amber), var(--teal)); border-radius: 2px; transition: width 0.4s ease; width: 0%; }
+.research-body { flex: 1; overflow: hidden; display: flex; flex-direction: row; position: relative; }
+.kb-section { padding: 20px 24px; border-right: 1px solid var(--border); overflow-y: auto; flex: 0 0 auto; width: calc(100% - 340px); min-width: 260px; }
+.research-divider { width: 6px; background: transparent; cursor: col-resize; flex-shrink: 0; position: relative; z-index: 2; transition: background 0.15s; margin-left: -1px; }
+.research-divider:hover, .research-divider.dragging { background: rgba(245,166,35,0.25); }
+.research-divider::after { content: '\2026'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 14px; color: var(--border2); pointer-events: none; transition: color 0.15s; }
+.research-divider:hover::after, .research-divider.dragging::after { color: var(--amber); }
+.kb-section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.section-label { font-family: 'MonoFont', monospace; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-dim); }
+.kb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+.kb-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 13px; cursor: pointer; transition: border-color 0.2s, transform 0.15s; animation: fadeUp 0.3s ease both; position: relative; }
+.kb-card:hover { border-color: var(--border2); transform: translateY(-1px); }
+.kb-card:hover .kb-delete { opacity: 1; }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+.kb-delete { position: absolute; top: 8px; right: 8px; font-family: 'MonoFont', monospace; font-size: 10px; width: 20px; height: 20px; border-radius: 3px; border: 1px solid var(--border2); background: var(--surface3); color: var(--text-dim); cursor: pointer; display: flex; align-items: center; justify-content: center; opacity: 0; transition: all 0.15s; z-index: 2; }
+.kb-delete:hover { color: var(--rose); border-color: var(--rose); background: var(--rose-dim); }
+.add-kw-row { display: flex; gap: 6px; margin-top: 8px; }
+.add-kw-input { flex: 1; background: var(--surface2); border: 1px solid var(--border2); border-radius: 4px; color: var(--text-bright); font-family: 'MonoFont', monospace; font-size: 10px; padding: 5px 8px; outline: none; transition: border-color 0.2s; }
+.add-kw-input:focus { border-color: var(--violet); }
+.add-kw-input::placeholder { color: var(--text-dim); }
+.scenarios-loading { display: none; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 80px 40px; }
+.scenarios-loading.active { display: flex; }
+.loading-title { font-family: 'SerifFont', serif; font-size: 22px; color: var(--text-bright); }
+.loading-sub { font-family: 'MonoFont', monospace; font-size: 10px; color: var(--text-dim); letter-spacing: 0.08em; }
+.loading-dots { display: flex; gap: 6px; }
+.loading-dot { width: 8px; height: 8px; border-radius: 50%; animation: dotPulse 1.2s ease-in-out infinite; }
+.loading-dot:nth-child(1) { background: var(--amber); animation-delay: 0s; }
+.loading-dot:nth-child(2) { background: var(--teal); animation-delay: 0.2s; }
+.loading-dot:nth-child(3) { background: var(--rose); animation-delay: 0.4s; }
+@keyframes dotPulse { 0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; } 40% { transform: scale(1); opacity: 1; } }
+.vault-accordion { flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 4px; }
+.vault-acc-item { border: 1px solid var(--border); border-radius: 7px; overflow: hidden; transition: border-color 0.2s; }
+.vault-acc-item.open { border-color: rgba(245,166,35,0.3); }
+.vault-acc-header { display: flex; align-items: center; padding: 9px 12px; cursor: pointer; background: var(--surface2); gap: 8px; transition: background 0.15s; }
+.vault-acc-header:hover { background: var(--surface3); }
+.vault-acc-chevron { font-size: 9px; color: var(--text-dim); transition: transform 0.2s; flex-shrink: 0; }
+.vault-acc-item.open .vault-acc-chevron { transform: rotate(90deg); color: var(--amber); }
+.vault-acc-title { font-family: 'SerifFont', serif; font-size: 15px; color: var(--text-bright); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vault-acc-badge { font-family: 'MonoFont', monospace; font-size: 10px; color: var(--text-dim); white-space: nowrap; flex-shrink: 0; }
+.vault-acc-body { display: none; padding: 0 12px 10px; background: var(--surface); flex-direction: column; gap: 8px; }
+.vault-acc-item.open .vault-acc-body { display: flex; }
+.vault-acc-scenario-text { font-size: 11px; color: var(--text-dim); line-height: 1.65; padding-top: 8px; border-top: 1px solid var(--border); }
+.vault-acc-artifact { background: var(--surface2); border: 1px solid var(--border); border-radius: 5px; padding: 8px 10px; }
+.vault-acc-artifact-type { font-family: 'MonoFont', monospace; font-size: 7.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 5px; }
+.vault-acc-artifact-body { font-size: 11px; color: var(--text); line-height: 1.65; white-space: pre-wrap; max-height: 100px; overflow: hidden; position: relative; }
+.vault-acc-artifact-body::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 24px; background: linear-gradient(transparent, var(--surface2)); }
+.vault-acc-actions { display: flex; gap: 5px; padding-top: 6px; border-top: 1px solid var(--border); }
+.kb-source-badge { font-family: 'MonoFont', monospace; font-size: 8px; letter-spacing: 0.14em; text-transform: uppercase; padding: 2px 6px; border-radius: 2px; display: inline-block; margin-bottom: 7px; }
+.badge-wiki { background: rgba(45,212,191,0.12); color: var(--teal); border: 1px solid rgba(45,212,191,0.25); }
+.badge-arxiv { background: rgba(167,139,250,0.12); color: var(--violet); border: 1px solid rgba(167,139,250,0.25); }
+.badge-ss { background: rgba(96,165,250,0.12); color: #60a5fa; border: 1px solid rgba(96,165,250,0.25); }
+.badge-crossref { background: rgba(251,113,133,0.12); color: var(--rose); border: 1px solid rgba(251,113,133,0.25); }
+.badge-openlibrary { background: rgba(245,166,35,0.12); color: var(--amber); border: 1px solid rgba(245,166,35,0.25); }
+.kb-title { font-family: 'SerifFont', serif; font-size: 14px; color: var(--text-bright); margin-bottom: 6px; line-height: 1.3; }
+.kb-excerpt { font-size: 11px; color: var(--text-dim); line-height: 1.65; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.kb-kws { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 8px; }
+.kb-kw { font-family: 'MonoFont', monospace; font-size: 8px; padding: 1px 5px; background: var(--surface3); border: 1px solid var(--border); border-radius: 2px; color: var(--text-dim); }
+.graph-section { display: flex; flex-direction: column; overflow: hidden; flex: 1 1 auto; min-width: 200px; }
+.graph-section-header { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+#graph-mini-svg { flex: 1; width: 100%; }
+.research-footer { padding: 10px 16px; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-shrink: 0; background: var(--surface); }
+.continue-bar { display: flex; align-items: center; gap: 8px; flex: 1; background: var(--surface2); border: 1px solid var(--border2); border-radius: 6px; padding: 4px 4px 4px 12px; transition: border-color 0.2s; }
+.continue-bar:focus-within { border-color: var(--violet); }
+.continue-bar-label { font-family: 'MonoFont', monospace; font-size: 9px; letter-spacing: 0.1em; color: var(--text-dim); white-space: nowrap; }
+.continue-input { flex: 1; background: transparent; border: none; outline: none; color: var(--text-bright); font-family: 'SansSerifFont', sans-serif; font-size: 12px; padding: 4px 0; }
+.continue-input::placeholder { color: var(--text-dim); font-style: italic; }
+.research-footer-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+#panel-scenarios { display: none; flex-direction: column; overflow: hidden; }
+#panel-scenarios.active { display: flex; }
+.scenarios-header-bar { padding: 20px 28px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: baseline; justify-content: space-between; flex-shrink: 0; }
+.scenarios-heading { font-family: 'SerifFont', serif; font-size: 26px; color: var(--text-bright); }
+.scenarios-body { flex: 1; overflow-y: auto; padding: 20px 24px; }
+.scenarios-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.scenario-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 18px; display: flex; flex-direction: column; gap: 10px; animation: fadeUp 0.4s ease both; position: relative; overflow: hidden; }
+.scenario-card::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; }
+.sc-color-0::after { background: var(--amber); } .sc-color-1::after { background: var(--teal); } .sc-color-2::after { background: var(--rose); } .sc-color-3::after { background: var(--violet); } .sc-color-4::after { background: var(--green); } .sc-color-5::after { background: #60a5fa; }
+.sc-index { font-family: 'MonoFont', monospace; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; }
+.sc-color-0 .sc-index { color: var(--amber); } .sc-color-1 .sc-index { color: var(--teal); } .sc-color-2 .sc-index { color: var(--rose); } .sc-color-3 .sc-index { color: var(--violet); } .sc-color-4 .sc-index { color: var(--green); } .sc-color-5 .sc-index { color: #60a5fa; }
+.sc-title { font-family: 'SerifFont', serif; font-size: 18px; color: var(--text-bright); line-height: 1.25; }
+.sc-tagline { font-style: italic; color: var(--text-dim); font-size: 11px; font-family: 'SerifFont', serif; line-height: 1.5; }
+.sc-body { font-size: 11.5px; color: var(--text); line-height: 1.75; flex: 1; }
+.sc-drivers { border-top: 1px solid var(--border); padding-top: 9px; }
+.sc-driver-label { font-family: 'MonoFont', monospace; font-size: 8px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 5px; }
+.sc-driver-tags { display: flex; flex-wrap: wrap; gap: 3px; }
+.sc-driver-tag { font-family: 'MonoFont', monospace; font-size: 10px; padding: 2px 6px; background: var(--surface3); border: 1px solid var(--border); border-radius: 2px; color: var(--text-dim); }
+.sc-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.scenarios-footer { padding: 14px 24px; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; background: var(--surface); }
+#panel-explore { display: none; flex-direction: row; overflow: hidden; }
+#panel-explore.active { display: flex; }
+.explore-chat { flex: 0 0 65%; display: flex; flex-direction: column; overflow: hidden; border-right: 1px solid var(--border); }
+.chat-nav-bar { display: flex; align-items: center; gap: 0; padding: 0 14px; background: var(--surface); border-bottom: 1px solid var(--border); overflow-x: auto; flex-shrink: 0; height: 40px; }
+.chat-nav-pill { font-family: 'MonoFont', monospace; font-size: 9px; letter-spacing: 0.08em; padding: 4px 12px; border-radius: 20px; cursor: pointer; border: 1px solid transparent; color: var(--text-dim); white-space: nowrap; transition: all 0.15s; background: transparent; margin-right: 4px; }
+.chat-nav-pill:hover { color: var(--text); border-color: var(--border2); }
+.chat-nav-pill.selected { background: var(--amber-dim); border-color: rgba(245,166,35,0.3); color: var(--amber); }
+.chat-context-bar { padding: 7px 16px; background: var(--surface2); border-bottom: 1px solid var(--border); font-family: 'MonoFont', monospace; font-size: 10px; color: var(--text-dim); flex-shrink: 0; }
+.chat-context-bar b { color: var(--amber); font-weight: 500; }
+.chat-messages { flex: 1; overflow-y: auto; padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+.chat-msg { max-width: 82%; animation: fadeUp 0.2s ease; }
+.chat-msg.user { align-self: flex-end; }
+.chat-msg.assistant { align-self: flex-start; }
+.msg-bubble { padding: 11px 14px; border-radius: 10px; line-height: 1.72; font-size: 13px; white-space: pre-wrap; }
+.user .msg-bubble { background: var(--amber-dim); border: 1px solid rgba(245,166,35,0.2); color: var(--text-bright); border-bottom-right-radius: 2px; }
+.assistant .msg-bubble { background: var(--surface3); border: 1px solid var(--border); color: var(--text); border-bottom-left-radius: 2px; }
+.msg-meta { font-family: 'MonoFont', monospace; font-size: 8px; color: var(--text-dim); margin-top: 3px; display: flex; align-items: center; gap: 8px; }
+.user .msg-meta { justify-content: flex-end; }
+.msg-save-btn { font-family: 'MonoFont', monospace; font-size: 8px; padding: 2px 7px; border-radius: 2px; border: 1px solid var(--border2); background: transparent; color: var(--text-dim); cursor: pointer; transition: all 0.15s; letter-spacing: 0.08em; text-transform: uppercase; }
+.msg-save-btn:hover { color: var(--green); border-color: var(--green); }
+.chat-suggestions { display: flex; gap: 5px; flex-wrap: wrap; padding: 8px 16px; border-top: 1px solid var(--border); background: var(--surface); }
+.suggestion { font-family: 'MonoFont', monospace; font-size: 9px; padding: 4px 9px; border-radius: 3px; border: 1px solid var(--border2); background: transparent; color: var(--text-dim); cursor: pointer; transition: all 0.15s; letter-spacing: 0.04em; }
+.suggestion:hover { color: var(--amber); border-color: rgba(245,166,35,0.4); }
+.chat-input-row { display: flex; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--border); background: var(--surface); flex-shrink: 0; }
+textarea.chat-input { flex: 1; background: var(--surface2); border: 1px solid var(--border2); border-radius: 5px; color: var(--text-bright); font-family: 'SansSerifFont', sans-serif; font-size: 13px; line-height: 1.5; padding: 8px 11px; resize: none; outline: none; height: 38px; transition: border-color 0.2s; }
+textarea.chat-input:focus { border-color: var(--amber); }
+.explore-vault { flex: 0 0 35%; display: flex; flex-direction: column; overflow: hidden; background: var(--surface); }
+.vault-header { padding: 10px 14px; border-bottom: 1px solid var(--border); font-family: 'MonoFont', monospace; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-dim); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+.empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 10px; color: var(--text-dim); font-family: 'MonoFont', monospace; font-size: 13px; text-align: center; padding: 40px; }
+.empty-state-icon { font-size: 36px; opacity: 0.2; margin-bottom: 4px; }
+::-webkit-scrollbar { width: 3px; height: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
+.spin { display: inline-block; width: 11px; height: 11px; border: 1.5px solid transparent; border-top-color: currentColor; border-radius: 50%; animation: spinner 0.65s linear infinite; }
+@keyframes spinner { to { transform: rotate(360deg); } }
+.settings-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.settings-row input[type=text] { background: var(--surface2); border: 1px solid var(--border2); border-radius: 4px; color: var(--text); font-family: 'MonoFont', monospace; font-size: 10px; padding: 4px 7px; outline: none; width: 140px; }
+.settings-row input[type=number] { width: 50px; background: var(--surface2); border: 1px solid var(--border2); border-radius: 4px; color: var(--text); font-family: 'MonoFont', monospace; font-size: 10px; padding: 4px 7px; outline: none; }
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 200; display: none; align-items: center; justify-content: center; }
+.modal-overlay.open { display: flex; }
+.modal { background: var(--surface2); border: 1px solid var(--border2); border-radius: 12px; padding: 26px; max-width: 600px; width: 92%; max-height: 80vh; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; animation: fadeUp 0.2s ease; }
+.modal-title { font-family: 'SerifFont', serif; font-size: 22px; color: var(--text-bright); }
+.modal-body { font-size: 13px; line-height: 1.75; color: var(--text); white-space: pre-wrap; }
+.modal-actions { display: flex; gap: 8px; padding-top: 4px; }
+.compare-wrap { flex: 1; overflow: auto; padding: 20px 24px; }
+.compare-toggle { display: flex; gap: 2px; background: var(--surface2); border: 1px solid var(--border); border-radius: 5px; padding: 2px; }
+.compare-toggle-btn { font-family: 'MonoFont', monospace; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; padding: 5px 12px; border-radius: 3px; border: none; background: transparent; color: var(--text-dim); cursor: pointer; transition: all 0.15s; }
+.compare-toggle-btn.active { background: var(--surface3); color: var(--text-bright); }
+.compare-generating { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 80px 40px; color: var(--text-dim); font-family: 'MonoFont', monospace; font-size: 10px; }
+.compare-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 11.5px; min-width: 600px; }
+.compare-table th { background: var(--surface2); padding: 10px 14px; text-align: left; font-family: 'SerifFont', serif; font-size: 13px; color: var(--text-bright); border-bottom: 2px solid var(--border2); border-right: 1px solid var(--border); white-space: nowrap; position: sticky; top: 0; z-index: 2; }
+.compare-table th.dim-header { font-family: 'MonoFont', monospace; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-dim); background: var(--surface); width: 140px; min-width: 120px; }
+.compare-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); vertical-align: top; line-height: 1.65; color: var(--text); }
+.compare-table td.dim-label { font-family: 'MonoFont', monospace; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-dim); background: var(--surface); white-space: nowrap; position: sticky; left: 0; z-index: 1; }
+.compare-table tr:hover td:not(.dim-label) { background: rgba(255,255,255,0.015); }
+.compare-sc-color-0 { border-top: 3px solid var(--amber) !important; } .compare-sc-color-1 { border-top: 3px solid var(--teal) !important; } .compare-sc-color-2 { border-top: 3px solid var(--rose) !important; } .compare-sc-color-3 { border-top: 3px solid var(--violet) !important; } .compare-sc-color-4 { border-top: 3px solid var(--green) !important; } .compare-sc-color-5 { border-top: 3px solid #60a5fa !important; }
+.compare-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--text-dim); font-family: 'MonoFont', monospace; font-size: 13px; }
+.evidence-row { display: flex; flex-wrap: wrap; gap: 5px; padding: 6px 0 2px; }
+.evidence-chip { display: inline-flex; align-items: center; gap: 4px; font-family: 'MonoFont', monospace; font-size: 8.5px; padding: 3px 8px; border-radius: 3px; border: 1px solid rgba(167,139,250,0.35); background: rgba(167,139,250,0.07); color: var(--violet); cursor: pointer; transition: all 0.15s; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.evidence-chip:hover { background: rgba(167,139,250,0.15); border-color: rgba(167,139,250,0.6); }
+.evidence-chip-src { font-size: 7px; opacity: 0.65; text-transform: uppercase; letter-spacing: 0.08em; flex-shrink: 0; }
+.evidence-label { font-family: 'MonoFont', monospace; font-size: 8px; color: var(--text-dim); letter-spacing: 0.08em; margin-bottom: 2px; }
+@keyframes kbPulse { 0% { box-shadow: 0 0 0 0 rgba(167,139,250,0.6); border-color: var(--violet); } 60% { box-shadow: 0 0 0 8px rgba(167,139,250,0); border-color: rgba(167,139,250,0.5); } 100% { box-shadow: 0 0 0 0 rgba(167,139,250,0); border-color: var(--border); } }
+.kb-card.evidence-highlight { animation: kbPulse 1.2s ease forwards !important; transform: none !important; }
+.graph-tooltip { position: absolute; background: var(--surface3); border: 1px solid var(--border2); border-radius: 6px; padding: 8px 12px; font-family: 'MonoFont', monospace; font-size: 9px; pointer-events: none; display: none; max-width: 200px; color: var(--text); line-height: 1.6; z-index: 10; }
+</style>
 </head>
 <body>
-  <div id="header">
-    <img src="kyafir white.png" alt="Kyafir Logo"></img>
-    <p>Speculation Engine</p>
-    <input type="text" id="topic-input" placeholder="Enter a topic to explore (e.g., 'bicycle', 'artificial intelligence')">
-    <button onclick="exploreTopic()">Explore</button>
+<!-- HEADER -->
+<div id="header">
+  <!-- <div class="wordmark">Fore<em>sight</em></div> -->
+  <div class="wordmark"><img src="kyafir white.png"></div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" id="tab-research" onclick="showTab('research')"><span class="tab-num">01</span> Research</button>
+    <button class="nav-tab" id="tab-scenarios" onclick="showTab('scenarios')"><span class="tab-num">02</span> Scenarios</button>
+    <button class="nav-tab" id="tab-compare" onclick="showTab('compare')"><span class="tab-num">03</span> Compare</button>
+    <button class="nav-tab" id="tab-explore" onclick="showTab('explore')"><span class="tab-num">04</span> Explore</button>
   </div>
+  <div class="status-pill">
+    <div class="status-dot" id="lm-dot"></div>
+    <span id="lm-status-text">LM Studio</span>
+  </div>
+</div>
 
-  <div id="chat">
-    <div id="chat-messages"></div>
-    <div id="chat-input-container">
-      <input type="text" id="chat-input" placeholder="Ask a question about the scenarios..." disabled>
-      <button id="chat-send-btn" onclick="sendChatMessage()" disabled>Send</button>
+<div id="shell">
+  <div id="sidebar">
+    <div class="sb-block">
+      <div class="sb-label">Research Topic</div>
+      <textarea class="topic" id="topic-input" placeholder="What do you want to explore?&#10;&#10;e.g. Growth platforms for automotive manufacturers..."></textarea>
+    </div>
+    <div class="sb-block">
+      <div class="sb-label">Guide Research <span style="font-size:8px;color:var(--text-dim);font-family:'SansSerifFont',sans-serif;letter-spacing:0;text-transform:none;">optional</span></div>
+      <input class="guide-input" id="guide-input" type="text" placeholder="e.g. transit, health, economics, climate">
+      <div style="margin-top:6px;font-family:'MonoFont',monospace;font-size:8.5px;color:var(--text-dim);line-height:1.6;">Comma-separated domains to include in the research scan.</div>
+    </div>
+    <div class="sb-block">
+      <div class="sb-label">LM Studio <span id="lm-ping" style="cursor:pointer;" onclick="checkLM()">↺ ping</span></div>
+      <div class="settings-row">
+        <input type="text" id="lm-url" value="http://localhost:1234" placeholder="LM Studio URL">
+        <button class="btn btn-ghost" onclick="checkLM()" style="padding:4px 8px;">⟳</button>
+      </div>
+      <div style="margin-top:7px;" class="settings-row">
+        <span style="font-family:'MonoFont',monospace;font-size:9px;color:var(--text-dim);letter-spacing:.1em;">DEPTH</span>
+        <input type="number" id="research-depth" value="2" min="1" max="4">
+        <span style="font-family:'MonoFont',monospace;font-size:9px;color:var(--text-dim);letter-spacing:.1em;">ITER.</span>
+      </div>
+    </div>
+    <div class="sb-block">
+      <div style="display:flex;gap:7px;flex-wrap:wrap;">
+        <button class="btn btn-amber" id="btn-start-research" onclick="startResearch()">◈ Begin Research</button>
+        <button class="btn btn-ghost" id="btn-stop" onclick="stopResearch()" style="display:none;">⬛ Stop</button>
+      </div>
+      <div class="progress-wrap" id="progress-wrap" style="display:none;"><div class="progress-bar" id="progress-bar"></div></div>
+    </div>
+    <div class="sb-block" style="flex-shrink:0;">
+      <div class="sb-label">
+        Keywords
+        <span>
+          <span style="font-size:7px;padding:1px 4px;border-radius:2px;background:rgba(245,166,35,0.1);color:var(--amber);margin-right:2px;">core</span>
+          <span style="font-size:7px;padding:1px 4px;border-radius:2px;background:rgba(45,212,191,0.1);color:var(--teal);margin-right:2px;">adj</span>
+          <span style="font-size:7px;padding:1px 4px;border-radius:2px;background:rgba(251,113,133,0.1);color:var(--rose);margin-right:2px;">guide</span>
+          <span style="font-size:7px;padding:1px 4px;border-radius:2px;background:rgba(167,139,250,0.1);color:var(--violet);">found</span>
+        </span>
+      </div>
+      <div class="chip-container" id="keyword-chips">
+        <span style="font-family:'MonoFont',monospace;font-size:9px;color:var(--text-dim);">— start research —</span>
+      </div>
+      <div class="add-kw-row">
+        <input class="add-kw-input" id="add-kw-input" type="text" placeholder="Add keywords, press Enter" onkeydown="addKeywordOnEnter(event)">
+        <button class="btn btn-ghost" style="padding:4px 8px;" onclick="continueResearch()">↺ More</button>
+      </div>
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+      <div class="sb-label" style="padding:10px 14px 6px;border-bottom:1px solid var(--border);flex-shrink:0;">Research Log</div>
+      <div id="research-log"></div>
     </div>
   </div>
 
-  <div class="resize-handle" id="resize-chat"></div>
+  <div id="content">
+    <div class="panel active" id="panel-research">
+      <div class="research-top">
+        <div class="hero-prompt" id="hero-topic">What do you want to <em>explore?</em></div>
+        <p class="research-sub" id="hero-sub">Enter a topic and hit <strong style="color:var(--amber)">Begin Research</strong>. Sources: Wikipedia · arXiv · Semantic Scholar · Crossref · Open Library.</p>
+        <div class="progress-wrap" id="progress-wrap2" style="display:none;margin-top:10px;"><div class="progress-bar" id="progress-bar2"></div></div>
+      </div>
+      <div class="research-body" id="research-body">
+        <div class="kb-section" id="kb-section">
+          <div class="kb-section-header">
+            <div class="section-label">Knowledge Base <span id="kb-count" style="color:var(--text);margin-left:6px;">0 articles</span></div>
+          </div>
+          <div id="kb-empty" class="empty-state" style="height:auto;padding:40px 20px;text-align:center;">
+            <div class="empty-state-icon">◎</div>
+            <div>Knowledge base is empty</div>
+            <div style="color:var(--text-dim);margin-top:4px;">Articles will appear here as research runs</div>
+          </div>
+          <div class="kb-grid" id="kb-grid" style="display:none;"></div>
+        </div>
+        <div class="research-divider" id="research-divider"></div>
+        <div class="graph-section" id="graph-section" style="position:relative;">
+          <div class="graph-section-header">
+            <div class="section-label">Knowledge Graph</div>
+            <button class="btn btn-ghost" style="padding:3px 8px;font-size:9px;" onclick="rerenderGraph()">↺</button>
+          </div>
+          <svg id="graph-mini-svg"></svg>
+          <div class="graph-tooltip" id="graph-tooltip"></div>
+          <div class="empty-state" id="graph-empty" style="position:absolute;inset:40px 0 0 0;">
+            <div class="empty-state-icon">◉</div>
+            <div style="font-size:10px;">Run research to build the graph</div>
+          </div>
+        </div>
+      </div>
+      <div class="research-footer">
+        <div class="continue-bar">
+          <span class="continue-bar-label">+ Expand</span>
+          <input class="continue-input" id="continue-input" type="text" placeholder="Add another angle… e.g. 'urban heat islands', 'battery supply chains'" onkeydown="continueResearchOnEnter(event)">
+          <button class="btn btn-ghost" id="btn-continue" onclick="continueResearchFromBar()" style="white-space:nowrap;">↺ Run</button>
+        </div>
+        <div class="research-footer-right">
+          <span style="font-family:'MonoFont',monospace;font-size:9px;color:var(--text-dim);" id="research-status">— no research yet —</span>
+          <button class="btn btn-teal" id="btn-gen-scenarios" onclick="generateScenarios()">◇ Generate Scenarios →</button>
+        </div>
+      </div>
+    </div>
 
-  <div id="network">
-    <svg id="network-svg"></svg>
-    <div id="tooltip"></div>
-    <div id="settings">
-      <label>LLM API:</label>
-      <input type="text" id="api-url" value="http://localhost:1234/v1">
+    <div class="panel" id="panel-scenarios">
+      <div class="scenarios-header-bar">
+        <div class="scenarios-heading">Divergent Futures</div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <span style="font-family:'MonoFont',monospace;font-size:9px;color:var(--text-dim);" id="sc-count"></span>
+          <button class="btn btn-ghost" id="btn-more-scenarios" onclick="generateMoreScenarios()" style="display:none;">+ 3 More</button>
+          <button class="btn btn-ghost" id="btn-regen" onclick="generateScenarios()" style="display:none;">↺ Regenerate</button>
+        </div>
+      </div>
+      <div class="scenarios-body">
+        <div id="scenarios-empty" class="empty-state">
+          <div class="empty-state-icon">◇</div>
+          <div>No scenarios yet</div>
+          <div style="color:var(--text-dim);margin-top:4px;">Build a knowledge base, then click "Generate Scenarios" from the Research tab</div>
+        </div>
+        <div class="scenarios-loading" id="scenarios-loading">
+          <div class="loading-dots"><div class="loading-dot"></div><div class="loading-dot"></div><div class="loading-dot"></div></div>
+          <div class="loading-title">Generating scenarios…</div>
+          <div class="loading-sub" id="scenarios-loading-sub">Synthesising knowledge base into divergent futures</div>
+        </div>
+        <div class="scenarios-grid" id="scenarios-grid" style="display:none;"></div>
+      </div>
+      <div class="scenarios-footer">
+        <div style="font-family:'MonoFont',monospace;font-size:9px;color:var(--text-dim);" id="sc-footer-status"></div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-ghost" id="btn-go-compare" onclick="showTab('compare');generateComparison()" style="display:none;">⊞ Compare →</button>
+          <button class="btn btn-amber" id="btn-go-explore" onclick="showTab('explore')" style="display:none;">Explore Scenarios →</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" id="panel-compare">
+      <div class="scenarios-header-bar" style="flex-shrink:0;">
+        <div class="scenarios-heading">Scenario Matrix</div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <div class="compare-toggle">
+            <button class="compare-toggle-btn active" id="compare-toggle-matrix" onclick="setCompareView('matrix')">Matrix</button>
+            <button class="compare-toggle-btn" id="compare-toggle-drivers" onclick="setCompareView('drivers')">Drivers</button>
+          </div>
+          <button class="btn btn-ghost" id="btn-gen-compare" onclick="generateComparison()" style="font-size:9px;padding:5px 10px;">⟳ Generate</button>
+        </div>
+      </div>
+      <div id="compare-empty" class="compare-empty" style="display:flex;">
+        <div style="opacity:0.3;">⊞</div>
+        <div>No scenarios to compare yet</div>
+        <div style="color:var(--text-dim);margin-top:2px;">Generate scenarios first, then click Generate</div>
+      </div>
+      <div id="compare-generating" class="compare-generating" style="display:none;">
+        <div class="loading-dots"><div class="loading-dot"></div><div class="loading-dot"></div><div class="loading-dot"></div></div>
+        <div>Analysing scenarios across dimensions…</div>
+      </div>
+      <div class="compare-wrap" id="compare-wrap" style="display:none;">
+        <div id="compare-matrix-view"><table class="compare-table" id="compare-table"></table></div>
+        <div id="compare-drivers-view" style="display:none;"></div>
+      </div>
+    </div>
+
+    <div class="panel" id="panel-explore">
+      <div class="explore-chat">
+        <div class="chat-nav-bar" id="chat-nav-bar">
+          <span style="font-family:'MonoFont',monospace;font-size:11px;color:var(--text-dim);margin-right:8px;white-space:nowrap;">SCENARIO</span>
+          <div id="chat-nav-pills" style="display:flex;gap:4px;flex-wrap:nowrap;overflow-x:auto;">
+            <span style="font-family:'MonoFont',monospace;font-size:11px;color:var(--text-dim);">— generate scenarios first —</span>
+          </div>
+        </div>
+        <div class="chat-context-bar" id="chat-context-bar">Select a scenario to begin exploring</div>
+        <div class="chat-messages" id="chat-messages">
+          <div class="empty-state"><div class="empty-state-icon">◐</div><div>Select a scenario above</div></div>
+        </div>
+        <div class="chat-suggestions" id="chat-suggestions" style="display:none;">
+          <button class="suggestion" onclick="useSuggestion(this)">A day in the life here</button>
+          <button class="suggestion" onclick="useSuggestion(this)">Key tensions in this world</button>
+          <button class="suggestion" onclick="useSuggestion(this)">Write a news headline</button>
+          <button class="suggestion" onclick="useSuggestion(this)">What does governance look like?</button>
+          <button class="suggestion" onclick="useSuggestion(this)">Who wins and who loses?</button>
+        </div>
+        <div class="chat-input-row">
+          <textarea class="chat-input" id="chat-input" placeholder="Ask about this scenario…" rows="1" onkeydown="chatKeydown(event)"></textarea>
+          <button class="btn btn-amber" onclick="sendChat()">Send</button>
+        </div>
+      </div>
+      <div class="explore-vault">
+        <div class="vault-header">
+          Vault
+          <button class="btn btn-ghost" style="padding:2px 7px;font-size:8px;" onclick="clearVault()">Clear all</button>
+        </div>
+        <div class="vault-accordion" id="vault-accordion">
+          <div style="padding:20px;font-family:'MonoFont',monospace;font-size:9px;color:var(--text-dim);text-align:center;">Save scenarios and artifacts during exploration</div>
+        </div>
+      </div>
     </div>
   </div>
+</div>
 
-  <div class="resize-handle" id="resize-network"></div>
-
-  <div id="canvas">
-    <div id="workspace-container">
-      <h3>WORKSPACE</h3>
-      <div id="canvas-items"></div>
-      <button id="find-signals-btn" class="action-btn" onclick="findLeadingSignals()">Find Leading Signals</button>
-      <button id="speculate-btn" class="action-btn" onclick="generateScenarios()">Speculate</button>
-    </div>
-
-    <div id="notepad-container">
-      <h3>NOTEPAD</h3>
-      <textarea id="notepad" placeholder="Paste or type your notes here..."></textarea>
-    </div>
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal" id="modal">
+    <div class="modal-title" id="modal-title"></div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-actions" id="modal-actions"></div>
   </div>
+</div>
+<script>
+const state = {
+  topic: '', keywords: { core: [], adjacent: [], guide: [], discovered: [] },
+  knowledgeBase: [], graphNodes: [], graphLinks: [], scenarios: [],
+  chatHistory: {}, activeChatScenario: null, vault: [],
+  researchRunning: false, stopFlag: false,
+  lmUrl: 'http://localhost:1234', comparison: null, compareView: 'matrix',
+};
 
-  <script>
-    // State
-    let nodes = [];
-    let links = [];
-    let simulation;
-    let canvasItems = [];
-    let currentTopic = '';
-    let wikidataEntityCache = {};
-    let arxivInsights = {}; // Store arXiv insights for each concept
-    let isFindingSignals = false; // Track if signal finding is in progress
-    let hasGeneratedScenarios = false; // Track if scenarios have been generated
-    let lastScenarios = ''; // Store the last generated scenarios for context
-    let conversationHistory = []; // Store chat history for context
-    // let modelType = 'meta-llama-3-8b-instruct'; // Default model
-    let modelType = 'meta-llama-3.1-8b-instruct'; // Default model
+async function checkLM() {
+  const url = document.getElementById('lm-url').value.trim();
+  state.lmUrl = url;
+  const dot = document.getElementById('lm-dot');
+  const txt = document.getElementById('lm-status-text');
+  dot.className = 'status-dot thinking'; txt.textContent = 'Checking…';
+  try {
+    const r = await fetch(`${url}/v1/models`, { signal: AbortSignal.timeout(3000) });
+    const data = await r.json();
+    const modelName = data.data?.[0]?.id || 'unknown';
+    dot.className = 'status-dot ok';
+    txt.textContent = modelName.length > 22 ? modelName.slice(0, 20) + '…' : modelName;
+    log('LM Studio connected: ' + modelName, 'ok');
+  } catch(e) { dot.className = 'status-dot err'; txt.textContent = 'LM Studio offline'; log('LM Studio not reachable', 'err'); }
+}
 
-    // Config
-    const API_BASE = () => document.getElementById('api-url').value;
+async function llm(messages, temperature = 0.7, maxTokens = 2000) {
+  const url = `${document.getElementById('lm-url').value.trim()}/v1/chat/completions`;
+  const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messages, temperature, max_tokens: maxTokens, stream: false }) });
+  if (!resp.ok) throw new Error(`LM Studio error: ${resp.status}`);
+  const data = await resp.json();
+  return data.choices?.[0]?.message?.content || '';
+}
 
-    // Initialize
-    function init() {
-      addMessage('system', 'Kyafir Speculation Engine initialized. Enter a topic to explore connections and potential futures.');
-      setupNetwork();
-      updateActionButtons();
+function parseJSON(text) {
+  const clean = text.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
+  try { return JSON.parse(clean); } catch(_) {}
+  const start = clean.search(/[\[{]/);
+  const end = Math.max(clean.lastIndexOf('}'), clean.lastIndexOf(']'));
+  if (start !== -1 && end !== -1) { try { return JSON.parse(clean.slice(start, end+1)); } catch(_) {} }
+  return null;
+}
+
+function log(msg, type = 'default') {
+  const logEl = document.getElementById('research-log');
+  const now = new Date();
+  const t = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')}`;
+  const div = document.createElement('div');
+  div.className = 'log-line';
+  div.innerHTML = `<span class="log-t">${t}</span><span class="log-${type}">${escHtml(msg)}</span>`;
+  logEl.appendChild(div); logEl.scrollTop = logEl.scrollHeight;
+}
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function showTab(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(`panel-${name}`).classList.add('active');
+  document.getElementById(`tab-${name}`).classList.add('active');
+  if (name === 'research') rerenderGraph();
+  if (name === 'explore') renderVault();
+  if (name === 'compare' && state.comparison) renderComparisonTable(state.comparison);
+}
+
+function setProgress(pct) {
+  ['progress-wrap','progress-wrap2'].forEach(id => {
+    const wrap = document.getElementById(id);
+    if (!wrap) return;
+    if (pct === null) { wrap.style.display='none'; return; }
+    wrap.style.display='block';
+    const bar = wrap.querySelector('.progress-bar');
+    if (bar) bar.style.width = pct + '%';
+  });
+}
+
+async function startResearch() {
+  const topic = document.getElementById('topic-input').value.trim();
+  if (!topic) { log('Please enter a research topic first', 'warn'); return; }
+  const guideRaw = document.getElementById('guide-input').value.trim();
+  const guideKws = guideRaw ? guideRaw.split(',').map(s => s.trim()).filter(Boolean) : [];
+  state.topic = topic;
+  state.keywords = { core: [], adjacent: [], guide: guideKws, discovered: [] };
+  state.knowledgeBase = []; state.graphNodes = []; state.graphLinks = [];
+  graphNodeMap.clear(); graphLinkSet.clear();
+  state.stopFlag = false; state.researchRunning = true;
+  document.getElementById('btn-start-research').disabled = true;
+  document.getElementById('btn-stop').style.display = 'inline-flex';
+  document.getElementById('kb-empty').style.display = 'none';
+  document.getElementById('kb-grid').style.display = 'grid';
+  document.getElementById('kb-grid').innerHTML = '';
+  document.getElementById('keyword-chips').innerHTML = '';
+  document.getElementById('hero-topic').innerHTML = `Researching: <em>${escHtml(topic)}</em>`;
+  document.getElementById('hero-sub').textContent = 'Seeding Wikipedia · arXiv · Semantic Scholar · Crossref · Open Library…';
+  document.getElementById('research-status').textContent = '— researching —';
+  log(`Starting research: "${topic}"`, 'info');
+  if (guideKws.length) log(`Guide domains: ${guideKws.join(', ')}`, 'info');
+  const depth = parseInt(document.getElementById('research-depth').value) || 2;
+  try {
+    setProgress(3);
+    log('Phase 1 — Seeding sources…', 'info');
+    await seedFromWikipedia(topic);
+    setProgress(15);
+    log('Phase 2 — Extracting keywords via LLM…', 'info');
+    await extractKeywords(topic, guideKws);
+    setProgress(25);
+    for (let iter = 0; iter < depth; iter++) {
+      if (state.stopFlag) break;
+      log(`Phase 3.${iter+1} — Research iteration ${iter+1}/${depth}`, 'info');
+      await researchIteration(iter, depth);
+      setProgress(25 + ((iter+1)/depth)*65);
     }
-
-    // Chat functions
-    function addMessage(type, content, isHTML = false) {
-      const msg = document.createElement('div');
-      msg.className = `message ${type}`;
-      if (isHTML) {
-        msg.innerHTML = content;
-      } else {
-        msg.textContent = content;
-      }
-      document.getElementById('chat-messages').appendChild(msg);
-      msg.scrollIntoView({ behavior: 'smooth' });
+    if (!state.stopFlag) {
+      log(`Research complete — ${state.knowledgeBase.length} articles gathered`, 'ok');
+      document.getElementById('hero-sub').textContent = `Found ${state.knowledgeBase.length} articles. Review or click "Generate Scenarios".`;
+      document.getElementById('research-status').textContent = `${state.knowledgeBase.length} articles · ${state.keywords.core.length} core + ${state.keywords.adjacent.length} adj.`;
     }
+  } catch(e) { log(`Error: ${e.message}`, 'err'); }
+  finally {
+    state.researchRunning = false;
+    document.getElementById('btn-start-research').disabled = false;
+    document.getElementById('btn-stop').style.display = 'none';
+    setProgress(null); rerenderGraph();
+  }
+}
+function stopResearch() { state.stopFlag = true; log('Research stopped by user', 'warn'); }
 
-    // Chat input functionality
-    async function sendChatMessage() {
-      const input = document.getElementById('chat-input');
-      const question = input.value.trim();
-      if (!question) return;
-
-      input.value = '';
-      const sendBtn = document.getElementById('chat-send-btn');
-      sendBtn.disabled = true;
-      input.disabled = true;
-
-      addMessage('user', question);
-      addMessage('system', 'Thinking...');
-
-      try {
-        // Build context from scenarios and insights
-        let context = `You are a futures researcher helping to explore scenarios and weak signals.\n\n`;
-        
-        if (lastScenarios) {
-          context += `Previously generated scenarios:\n${lastScenarios}\n\n`;
-        }
-        
-        if (Object.keys(arxivInsights).length > 0) {
-          context += `Research insights:\n`;
-          for (const [concept, data] of Object.entries(arxivInsights)) {
-            if (data.summary && data.summary !== 'No recent papers found.') {
-              context += `- ${concept}: ${data.summary}\n`;
-            }
-          }
-          context += `\n`;
-        }
-        
-        context += `Current workspace concepts: ${canvasItems.join(', ')}\n\n`;
-        
-        // Build conversation history
-        const messages = [
-          { role: 'system', content: context },
-          ...conversationHistory,
-          { role: 'user', content: question }
-        ];
-
-        const response = await fetch(`${API_BASE()}/chat/completions`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: modelType,
-            messages: messages,
-            temperature: 0.8,
-            max_tokens: 500
-          })
-        });
-
-        if (!response.ok) throw new Error('LLM request failed');
-
-        const data = await response.json();
-        const answer = data.choices[0].message.content;
-
-        // Add to conversation history
-        conversationHistory.push({ role: 'user', content: question });
-        conversationHistory.push({ role: 'assistant', content: answer });
-        
-        // Keep only last 6 messages (3 exchanges) to avoid token limits
-        if (conversationHistory.length > 6) {
-          conversationHistory = conversationHistory.slice(-6);
-        }
-
-        addMessage('assistant', answer);
-      } catch (err) {
-        addMessage('system', 'Could not connect to LM Studio. Make sure it\'s running and the API URL is correct.');
-        console.error(err);
-      } finally {
-        sendBtn.disabled = false;
-        input.disabled = false;
-        input.focus();
-      }
+async function seedFromWikipedia(topic) {
+  try {
+    log(`  Seeding Wikipedia: "${topic}"…`);
+    const r = await fetch(`https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(topic)}&srlimit=5&format=json&origin=*`);
+    const data = await r.json();
+    for (const result of (data.query?.search || []).slice(0, 3)) {
+      if (state.stopFlag) return;
+      await fetchWikipediaArticle(result.title, topic);
     }
+    await searchSemanticScholar(topic);
+  } catch(e) { log(`  Wikipedia seed error: ${e.message}`, 'warn'); }
+}
 
-    // Enable chat input when scenarios are generated
-    function enableChatInput() {
-      const input = document.getElementById('chat-input');
-      const sendBtn = document.getElementById('chat-send-btn');
-      input.disabled = false;
-      sendBtn.disabled = false;
-      input.placeholder = 'Ask a question about the scenarios...';
+async function extractKeywords(topic, guideKws) {
+  const recentContent = state.knowledgeBase.slice(0, 3).map(a => `${a.title}: ${a.excerpt.slice(0,180)}`).join('\n\n');
+  const guideSection = guideKws.length ? `\nInclude keywords from: ${guideKws.join(', ')}.` : '';
+  const prompt = `You are a broad-spectrum research strategist. Extract keywords for an interdisciplinary foresight scan.
+Topic: "${topic}"${guideSection}
+Context: ${recentContent}
+Think expansively across adjacent systems, impacts, disciplines.
+Return ONLY valid JSON: {"core":["5 keywords"],"adjacent":["8-10 broader concepts"]}
+No markdown, no explanation.`;
+  try {
+    const result = await llm([
+      { role: 'system', content: 'Return only valid JSON with core and adjacent arrays.' },
+      { role: 'user', content: prompt }
+    ], 0.4, 500);
+    const parsed = parseJSON(result);
+    if (parsed) {
+      state.keywords.core = parsed.core || [];
+      state.keywords.adjacent = parsed.adjacent || [];
+      log(`Extracted ${state.keywords.core.length} core + ${state.keywords.adjacent.length} adjacent keywords`, 'ok');
+      if (guideKws.length) log(`  Including ${guideKws.length} guide domains`, 'info');
+      renderKeywordChips();
+      state.keywords.core.forEach(k => addGraphNode(k, 'core', 3));
+      state.keywords.adjacent.forEach(k => addGraphNode(k, 'adjacent', 2));
+      guideKws.forEach(k => addGraphNode(k, 'guide', 2.5));
+      state.keywords.core.forEach(c => state.keywords.adjacent.forEach(a => { if (Math.random() > 0.55) addGraphLink(c, a, 0.5); }));
+    } else {
+      state.keywords.core = topic.split(/\s+/).filter(w => w.length > 3).slice(0, 5);
+      log('Keyword extraction fallback used', 'warn'); renderKeywordChips();
     }
+  } catch(e) { log(`Keyword extraction error: ${e.message}`, 'err'); }
+}
 
-    // Main exploration function
-    async function exploreTopic() {
-      const input = document.getElementById('topic-input');
-      const topic = input.value.trim();
-      if (!topic) return;
+async function researchIteration(iter) {
+  let searchTerms = iter === 0
+    ? [...state.keywords.core, ...state.keywords.adjacent.slice(0, 4), ...state.keywords.guide]
+    : [...state.keywords.discovered.slice(-6), ...state.keywords.guide, ...state.keywords.adjacent.slice(4)];
+  if (searchTerms.length === 0) searchTerms = state.keywords.core;
+  for (const term of searchTerms) {
+    if (state.stopFlag) return;
+    await searchWikipedia(term);
+    await searchArxiv(term);
+    await searchSemanticScholar(term);
+    await searchCrossref(term);
+    await searchOpenLibrary(term);
+    if (state.knowledgeBase.length > 0 && state.knowledgeBase.length % 4 === 0) await discoverNewKeywords();
+  }
+}
 
-      currentTopic = topic;
-      input.value = '';
-      addMessage('user', `Explore: ${topic}`);
-      addMessage('system', 'Querying knowledge sources...');
-
-      // Reset state when exploring new topic
-      isFindingSignals = false;
-      hasGeneratedScenarios = false;
-      lastScenarios = '';
-      conversationHistory = [];
-      arxivInsights = {};
-      
-      // Disable chat input until scenarios are generated
-      document.getElementById('chat-input').disabled = true;
-      document.getElementById('chat-send-btn').disabled = true;
-
-      try {
-        // Query both Wikidata and Wikipedia in parallel
-        const [wikidataConnections, wikipediaConnections] = await Promise.all([
-          queryWikidata(topic),
-          queryWikipedia(topic)
-        ]);
-
-        // Merge and deduplicate connections
-        const allConnections = mergeConnections(wikidataConnections, wikipediaConnections);
-        
-        addMessage('assistant', `Found ${allConnections.length} related concepts (${wikidataConnections.length} from Wikidata, ${wikipediaConnections.length} from Wikipedia)`);
-
-        // Build network
-        buildNetwork(topic, allConnections);
-        
-        updateActionButtons();
-
-      } catch (err) {
-        addMessage('system', `Error: ${err.message}`);
-        console.error(err);
-      }
+async function searchWikipedia(query) {
+  try {
+    log(`Wikipedia: "${query}"…`);
+    const r = await fetch(`https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&srlimit=3&format=json&origin=*`);
+    const data = await r.json();
+    for (const result of (data.query?.search || []).slice(0, 2)) {
+      if (state.stopFlag) return;
+      await fetchWikipediaArticle(result.title, query);
     }
+  } catch(e) { log(`  Wikipedia error "${query}": ${e.message}`, 'warn'); }
+}
 
-    // HYBRID - Wikidata SPARQL query with filtered properties
-    async function queryWikidata(topic) {
-      try {
-        const searchUrl = `https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${encodeURIComponent(topic)}&language=en&format=json&origin=*`;
-        const searchRes = await fetch(searchUrl);
-        const searchData = await searchRes.json();
-        
-        if (!searchData.search || searchData.search.length === 0) {
-          addMessage('system', 'No Wikidata entity found for this topic');
-          return [];
-        }
-
-        const entityId = searchData.search[0].id;
-        const entityLabel = searchData.search[0].label;
-        wikidataEntityCache[entityLabel] = entityId;
-        
-        const sparqlQuery = `
-          SELECT DISTINCT ?property ?propertyLabel ?value ?valueLabel WHERE {
-            wd:${entityId} ?p ?value.
-            ?property wikibase:directClaim ?p.
-            
-            FILTER(?p IN (
-              wdt:P31,   # instance of
-              wdt:P279,  # subclass of
-              wdt:P361,  # part of
-              wdt:P527,  # has part
-              wdt:P366,  # use
-              wdt:P2283, # uses
-              wdt:P1269, # facet of
-              wdt:P138,  # named after
-              wdt:P176,  # manufacturer
-              wdt:P452,  # industry
-              wdt:P101,  # field of work
-              wdt:P425,  # field of this occupation
-              wdt:P1056, # product or material produced
-              wdt:P186,  # material used
-              wdt:P1435, # heritage designation
-              wdt:P921,  # main subject
-              wdt:P136,  # genre
-              wdt:P495,  # country of origin
-              wdt:P17    # country
-            ))
-            
-            FILTER(isIRI(?value))
-            SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
-          }
-          LIMIT 30
-        `;
-
-        const url = `https://query.wikidata.org/sparql?query=${encodeURIComponent(sparqlQuery)}&format=json`;
-        const res = await fetch(url);
-        const data = await res.json();
-        
-        const results = data.results.bindings.map(b => ({
-          property: b.property.value,
-          propertyLabel: b.propertyLabel.value,
-          value: b.value.value,
-          valueLabel: b.valueLabel.value,
-          source: 'wikidata'
-        }));
-
-        results.forEach(r => {
-          const match = r.value.match(/\/(Q\d+)$/);
-          if (match) {
-            wikidataEntityCache[r.valueLabel] = match[1];
-          }
-        });
-
-        return results;
-      } catch (err) {
-        console.error('Wikidata query error:', err);
-        return [];
-      }
+async function fetchWikipediaArticle(title, queryKw) {
+  if (state.knowledgeBase.find(k => k.title.toLowerCase() === title.toLowerCase())) return;
+  try {
+    const r = await fetch(`https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(title)}&prop=extracts&exintro=true&exsentences=8&format=json&origin=*`);
+    const data = await r.json();
+    const page = Object.values(data.query?.pages || {})[0];
+    if (page?.extract) {
+      const text = page.extract.replace(/<[^>]+>/g, '').trim();
+      if (text.length < 80) return;
+      addToKnowledgeBase({ id: `wiki-${Date.now()}-${Math.random().toString(36).slice(2,6)}`, title: page.title || title, source: 'wikipedia', url: `https://en.wikipedia.org/wiki/${encodeURIComponent((page.title||title).replace(/ /g,'_'))}`, excerpt: text.slice(0,320)+'…', content: text.slice(0,1500), keywords: [queryKw] });
+      addGraphNode(title,'article',1); addGraphLink(queryKw,title,0.8);
+      log(`  ✓ Wikipedia: ${title}`, 'ok');
     }
+  } catch(e) { /* silent */ }
+}
 
-    // HYBRID - Wikipedia API for categories and links
-    async function queryWikipedia(topic) {
-      try {
-        const searchUrl = `https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(topic)}&limit=1&format=json&origin=*`;
-        const searchRes = await fetch(searchUrl);
-        const [_, titles] = await searchRes.json();
-        
-        if (!titles || titles.length === 0) {
-          return [];
-        }
-        
-        const pageTitle = titles[0];
-        
-        const pageUrl = `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(pageTitle)}&prop=categories|links&pllimit=30&cllimit=20&format=json&origin=*`;
-        const pageRes = await fetch(pageUrl);
-        const pageData = await pageRes.json();
-        
-        const pages = pageData.query.pages;
-        const pageId = Object.keys(pages)[0];
-        const page = pages[pageId];
-        
-        const connections = [];
-        
-        if (page.categories) {
-          page.categories.forEach(cat => {
-            const cleanCat = cat.title.replace('Category:', '');
-            if (!cleanCat.includes('Articles') && 
-                !cleanCat.includes('Wikipedia') && 
-                !cleanCat.includes('Pages') &&
-                !cleanCat.includes('CS1') &&
-                !cleanCat.includes('All ')) {
-              connections.push({
-                propertyLabel: 'category',
-                valueLabel: cleanCat,
-                source: 'wikipedia'
-              });
-            }
-          });
-        }
-        
-        if (page.links) {
-          page.links.slice(0, 20).forEach(link => {
-            if (!link.title.includes(':') && 
-                !link.title.startsWith('List of') &&
-                !link.title.startsWith('Index of')) {
-              connections.push({
-                propertyLabel: 'related topic',
-                valueLabel: link.title,
-                source: 'wikipedia'
-              });
-            }
-          });
-        }
-        
-        return connections;
-      } catch (err) {
-        console.error('Wikipedia query error:', err);
-        return [];
-      }
+async function searchArxiv(query) {
+  try {
+    log(`arXiv: "${query}"…`);
+    const arxivUrl = `https://export.arxiv.org/api/query?search_query=all:${encodeURIComponent(query.split(' ').slice(0,5).join(' '))}&start=0&max_results=4`;
+    const resp = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(arxivUrl)}`, { signal: AbortSignal.timeout(12000) });
+    if (!resp.ok) { log(`  arXiv proxy HTTP ${resp.status}`, 'warn'); return; }
+    const json = await resp.json();
+    if (!json.contents) { log(`  arXiv: empty response`, 'warn'); return; }
+    const xml = new DOMParser().parseFromString(json.contents, 'application/xml');
+    if (xml.querySelector('parsererror')) { log(`  arXiv: parse error`, 'warn'); return; }
+    let added = 0;
+    for (const entry of xml.querySelectorAll('entry')) {
+      if (state.stopFlag) return;
+      const title = (entry.querySelector('title')?.textContent||'').trim().replace(/\s+/g,' ');
+      const summary = (entry.querySelector('summary')?.textContent||'').trim();
+      const idText = (entry.querySelector('id')?.textContent||'').trim();
+      if (!title||title.length<5||title.toLowerCase()==='error') continue;
+      if (state.knowledgeBase.find(k=>k.title===title)) continue;
+      if (summary.length<40) continue;
+      addToKnowledgeBase({ id:`arxiv-${Date.now()}-${Math.random().toString(36).slice(2,6)}`, title, source:'arxiv', url:idText||'https://arxiv.org', excerpt:summary.slice(0,320)+'…', content:summary.slice(0,1500), keywords:[query] });
+      addGraphNode(title,'article',1); addGraphLink(query,title,0.7);
+      log(`  ✓ arXiv: ${title.slice(0,55)}…`, 'ok'); added++;
+      if (added >= 2) break;
     }
+    if (added === 0) log(`  arXiv: no results for "${query}"`, 'warn');
+  } catch(e) {
+    if (e.name==='TimeoutError'||e.name==='AbortError') log(`  arXiv timeout`, 'warn');
+    else log(`  arXiv error: ${e.message}`, 'warn');
+  }
+}
 
-    // Merge connections from both sources and deduplicate
-    function mergeConnections(wikidataResults, wikipediaResults) {
-      const merged = [...wikidataResults];
-      const existingLabels = new Set(wikidataResults.map(r => r.valueLabel.toLowerCase()));
-      
-      wikipediaResults.forEach(wp => {
-        if (!existingLabels.has(wp.valueLabel.toLowerCase())) {
-          merged.push(wp);
-          existingLabels.add(wp.valueLabel.toLowerCase());
-        }
+async function searchSemanticScholar(query) {
+  try {
+    log(`Semantic Scholar: "${query}"…`);
+    const url = `https://api.semanticscholar.org/graph/v1/paper/search?query=${encodeURIComponent(query.split(' ').slice(0,6).join(' '))}&limit=4&fields=title,abstract,year,externalIds,openAccessPdf`;
+    const resp = await fetch(url, { signal: AbortSignal.timeout(10000), headers:{'Accept':'application/json'} });
+    if (!resp.ok) { log(`  S2 HTTP ${resp.status}`, 'warn'); return; }
+    const data = await resp.json();
+    let added = 0;
+    for (const paper of data.data||[]) {
+      if (state.stopFlag) return;
+      if (!paper.title||!paper.abstract) continue;
+      if (state.knowledgeBase.find(k=>k.title===paper.title)) continue;
+      const url2 = paper.openAccessPdf?.url||`https://www.semanticscholar.org/paper/${paper.paperId||''}`;
+      addToKnowledgeBase({ id:`ss-${Date.now()}-${Math.random().toString(36).slice(2,6)}`, title:paper.title, source:'semantic-scholar', url:url2, excerpt:paper.abstract.slice(0,320)+'…', content:paper.abstract.slice(0,1500), keywords:[query] });
+      addGraphNode(paper.title,'article',1); addGraphLink(query,paper.title,0.7);
+      log(`  ✓ S2: ${paper.title.slice(0,55)}…`, 'ok'); added++;
+      if (added >= 2) break;
+    }
+    if (added===0) log(`  S2: no results for "${query}"`, 'warn');
+  } catch(e) {
+    if (e.name==='TimeoutError'||e.name==='AbortError') log(`  S2 timeout`, 'warn');
+    else log(`  S2 error: ${e.message}`, 'warn');
+  }
+}
+
+// ── Crossref ─────────────────────────────────────────────────
+// 145M+ scholarly works with DOIs. Full CORS, no API key needed.
+// Filters for abstracts only — many records lack them so yield varies.
+async function searchCrossref(query) {
+  try {
+    log(`Crossref: "${query}"…`);
+    const url = `https://api.crossref.org/works?query=${encodeURIComponent(query.split(' ').slice(0,6).join(' '))}&rows=6&select=title,abstract,DOI,URL,type&mailto=foresight@research.tool`;
+    const resp = await fetch(url, { signal: AbortSignal.timeout(10000), headers:{'Accept':'application/json'} });
+    if (!resp.ok) { log(`  Crossref HTTP ${resp.status}`, 'warn'); return; }
+    const data = await resp.json();
+    let added = 0;
+    for (const item of data.message?.items||[]) {
+      if (state.stopFlag) return;
+      const title = Array.isArray(item.title) ? item.title[0] : item.title;
+      if (!title||title.length<5) continue;
+      if (state.knowledgeBase.find(k=>k.title===title)) continue;
+      // Strip JATS XML tags that Crossref sometimes includes in abstracts
+      const abstract = (item.abstract||'').replace(/<[^>]+>/g,'').trim();
+      if (!abstract||abstract.length<60) continue; // skip records without abstracts
+      const articleUrl = item.DOI ? `https://doi.org/${item.DOI}` : (item.URL||'#');
+      addToKnowledgeBase({ id:`cr-${Date.now()}-${Math.random().toString(36).slice(2,6)}`, title, source:'crossref', url:articleUrl, excerpt:abstract.slice(0,320)+'…', content:abstract.slice(0,1500), keywords:[query] });
+      addGraphNode(title,'article',1); addGraphLink(query,title,0.7);
+      log(`  ✓ Crossref: ${title.slice(0,55)}…`, 'ok'); added++;
+      if (added>=2) break;
+    }
+    if (added===0) log(`  Crossref: no abstracts for "${query}"`, 'warn');
+  } catch(e) {
+    if (e.name==='TimeoutError'||e.name==='AbortError') log(`  Crossref timeout`, 'warn');
+    else log(`  Crossref error: ${e.message}`, 'warn');
+  }
+}
+
+// ── Open Library ──────────────────────────────────────────────
+// 20M+ books. Surfaces long-form conceptual works, historical texts,
+// and non-academic ideas that journal databases miss — great for foresight.
+async function searchOpenLibrary(query) {
+  try {
+    log(`Open Library: "${query}"…`);
+    const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query.split(' ').slice(0,5).join(' '))}&limit=6&fields=title,author_name,first_publish_year,subject,first_sentence,key`;
+    const resp = await fetch(url, { signal: AbortSignal.timeout(10000), headers:{'Accept':'application/json'} });
+    if (!resp.ok) { log(`  OL HTTP ${resp.status}`, 'warn'); return; }
+    const data = await resp.json();
+    let added = 0;
+    for (const doc of data.docs||[]) {
+      if (state.stopFlag) return;
+      if (!doc.title) continue;
+      if (state.knowledgeBase.find(k=>k.title===doc.title)) continue;
+      const firstSentence = Array.isArray(doc.first_sentence) ? doc.first_sentence[0] : (typeof doc.first_sentence==='string' ? doc.first_sentence : '');
+      const subjects = Array.isArray(doc.subject) ? doc.subject.slice(0,6).join(', ') : '';
+      const authors = Array.isArray(doc.author_name) ? doc.author_name.slice(0,2).join(', ') : '';
+      if (!firstSentence&&!subjects) continue;
+      const parts = [];
+      if (authors) parts.push(`By ${authors}${doc.first_publish_year ? ` (${doc.first_publish_year})` : ''}.`);
+      if (firstSentence) parts.push(firstSentence);
+      if (subjects) parts.push(`Subjects: ${subjects}.`);
+      const excerpt = parts.join(' ').slice(0,320);
+      if (excerpt.length<40) continue;
+      addToKnowledgeBase({ id:`ol-${Date.now()}-${Math.random().toString(36).slice(2,6)}`, title:doc.title, source:'openlibrary', url:doc.key?`https://openlibrary.org${doc.key}`:'https://openlibrary.org', excerpt:excerpt+'…', content:excerpt, keywords:[query] });
+      addGraphNode(doc.title,'article',1); addGraphLink(query,doc.title,0.65);
+      log(`  ✓ OL: ${doc.title.slice(0,55)}…`, 'ok'); added++;
+      if (added>=2) break;
+    }
+    if (added===0) log(`  OL: no usable results for "${query}"`, 'warn');
+  } catch(e) {
+    if (e.name==='TimeoutError'||e.name==='AbortError') log(`  OL timeout`, 'warn');
+    else log(`  OL error: ${e.message}`, 'warn');
+  }
+}
+
+async function discoverNewKeywords() {
+  try {
+    log('Discovering new keywords…', 'info');
+    const recentArticles = state.knowledgeBase.slice(-5).map(a=>`${a.title}: ${a.excerpt.slice(0,130)}`).join('\n\n');
+    const allKws = [...state.keywords.core,...state.keywords.adjacent,...state.keywords.guide,...state.keywords.discovered].join(', ');
+    const result = await llm([
+      { role:'system', content:'Return only a JSON array of keyword strings.' },
+      { role:'user', content:`Based on these research summaries, identify 6 new interdisciplinary keywords.\n\nArticles:\n${recentArticles}\n\nTopic: "${state.topic}"\nAlready explored: ${allKws}\n\nReturn ONLY a JSON array. Example: ["keyword1","keyword2"]` }
+    ], 0.5, 200);
+    const parsed = parseJSON(result);
+    if (Array.isArray(parsed)) {
+      const newKws = parsed.filter(k=>typeof k==='string'&&!state.keywords.discovered.includes(k));
+      state.keywords.discovered.push(...newKws);
+      newKws.forEach(k => { addGraphNode(k,'discovered',1.5); const rc=state.keywords.core[Math.floor(Math.random()*state.keywords.core.length)]; if(rc) addGraphLink(rc,k,0.4); });
+      log(`  Found ${newKws.length} new keywords`, 'ok'); renderKeywordChips();
+    }
+  } catch(e) { log(`  Keyword discovery error: ${e.message}`, 'warn'); }
+}
+
+function addToKnowledgeBase(article) {
+  state.knowledgeBase.push(article);
+  renderKBCard(article);
+  document.getElementById('kb-count').textContent = `${state.knowledgeBase.length} articles`;
+}
+
+function renderKBCard(article) {
+  const grid = document.getElementById('kb-grid');
+  const card = document.createElement('div');
+  card.className = 'kb-card'; card.id = `kb-card-${article.id}`;
+  card.style.animationDelay = (state.knowledgeBase.length * 0.03) + 's';
+  card.onclick = (e) => { if (!e.target.classList.contains('kb-delete')) showArticleModal(article); };
+  const cfg = { wikipedia:{cls:'badge-wiki',label:'Wikipedia'}, arxiv:{cls:'badge-arxiv',label:'arXiv'}, 'semantic-scholar':{cls:'badge-ss',label:'S2'}, crossref:{cls:'badge-crossref',label:'Crossref'}, openlibrary:{cls:'badge-openlibrary',label:'Open Library'} }[article.source] || {cls:'badge-wiki',label:'Source'};
+  card.innerHTML = `<button class="kb-delete" title="Remove" onclick="removeArticle('${article.id}',event)">×</button><span class="kb-source-badge ${cfg.cls}">${cfg.label}</span><div class="kb-title">${escHtml(article.title)}</div><div class="kb-excerpt">${escHtml(article.excerpt)}</div><div class="kb-kws">${article.keywords.slice(0,3).map(k=>`<span class="kb-kw">${escHtml(k)}</span>`).join('')}</div>`;
+  grid.appendChild(card);
+}
+
+function removeArticle(articleId, e) {
+  e.stopPropagation();
+  state.knowledgeBase = state.knowledgeBase.filter(a => a.id !== articleId);
+  const card = document.getElementById(`kb-card-${articleId}`);
+  if (card) { card.style.transition='opacity 0.2s,transform 0.2s'; card.style.opacity='0'; card.style.transform='scale(0.95)'; setTimeout(()=>card.remove(),200); }
+  document.getElementById('kb-count').textContent = `${state.knowledgeBase.length} articles`;
+  log('Article removed', 'warn');
+}
+
+function showArticleModal(article) {
+  document.getElementById('modal-title').textContent = article.title;
+  document.getElementById('modal-body').textContent = article.content;
+  document.getElementById('modal-actions').innerHTML = `<a href="${article.url}" target="_blank" class="btn btn-ghost" style="text-decoration:none;">↗ Open Source</a><button class="btn btn-ghost" onclick="closeModal()">Close</button>`;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function renderKeywordChips() {
+  const container = document.getElementById('keyword-chips'); container.innerHTML = '';
+  const add = (kws, cls) => kws.forEach(k => { const chip = document.createElement('span'); chip.className=`chip ${cls}`; chip.textContent=k; container.appendChild(chip); });
+  add(state.keywords.core,'chip-core'); add(state.keywords.adjacent,'chip-adj'); add(state.keywords.guide,'chip-guide'); add(state.keywords.discovered.slice(-12),'chip-found');
+}
+
+const graphNodeMap = new Map(); const graphLinkSet = new Set();
+function addGraphNode(id, type, weight) { if (!graphNodeMap.has(id)) { const n={id,label:id,type,weight}; graphNodeMap.set(id,n); state.graphNodes.push(n); } }
+function addGraphLink(sourceId, targetId, weight) { const key=[sourceId,targetId].sort().join('--'); if (!graphLinkSet.has(key)) { graphLinkSet.add(key); state.graphLinks.push({source:sourceId,target:targetId,weight}); } }
+
+let graphSim = null;
+function rerenderGraph() {
+  const svg = document.getElementById('graph-mini-svg');
+  const empty = document.getElementById('graph-empty');
+  if (state.graphNodes.length===0) { empty.style.display='flex'; return; }
+  empty.style.display='none';
+  const W=svg.clientWidth||340, H=svg.clientHeight||400;
+  d3.select('#graph-mini-svg').selectAll('*').remove();
+  const svgSel = d3.select('#graph-mini-svg');
+  const g = svgSel.append('g');
+  svgSel.call(d3.zoom().scaleExtent([0.2,3]).on('zoom',e=>g.attr('transform',e.transform)));
+  const colorMap={core:'var(--amber)',adjacent:'var(--teal)',guide:'var(--rose)',discovered:'var(--violet)',article:'rgba(255,255,255,0.18)'};
+  const radiusMap={core:11,adjacent:8,guide:9,discovered:7,article:4};
+  const nodes=state.graphNodes.map(n=>({...n}));
+  const nodeIds=new Set(nodes.map(n=>n.id));
+  const links=state.graphLinks.filter(l=>nodeIds.has(l.source)&&nodeIds.has(l.target)).map(l=>({...l}));
+  if (graphSim) graphSim.stop();
+  graphSim = d3.forceSimulation(nodes)
+    .force('link',d3.forceLink(links).id(d=>d.id).distance(60).strength(0.4))
+    .force('charge',d3.forceManyBody().strength(-120))
+    .force('center',d3.forceCenter(W/2,H/2))
+    .force('collision',d3.forceCollide(16));
+  const link=g.append('g').selectAll('line').data(links).join('line').attr('stroke','rgba(255,255,255,0.05)').attr('stroke-width',1);
+  const node=g.append('g').selectAll('g').data(nodes).join('g').attr('class','node')
+    .call(d3.drag()
+      .on('start',(e,d)=>{if(!e.active)graphSim.alphaTarget(0.3).restart();d.fx=d.x;d.fy=d.y;})
+      .on('drag',(e,d)=>{d.fx=e.x;d.fy=e.y;})
+      .on('end',(e,d)=>{if(!e.active)graphSim.alphaTarget(0);d.fx=null;d.fy=null;}));
+  node.append('circle').attr('r',d=>radiusMap[d.type]||5).attr('fill',d=>colorMap[d.type]||'#aaa').attr('fill-opacity',d=>d.type==='article'?0.5:0.8).attr('stroke',d=>colorMap[d.type]||'#aaa').attr('stroke-opacity',0.4).attr('stroke-width',1.5);
+  node.append('text').attr('dy',d=>(radiusMap[d.type]||5)+9).attr('text-anchor','middle').attr('font-family',"'MonoFont', monospace").attr('font-size','8').attr('fill','rgba(160,160,200,0.7)').attr('pointer-events','none').text(d=>d.label.length>16?d.label.slice(0,14)+'…':d.label);
+  const tooltip=document.getElementById('graph-tooltip');
+  node.on('mouseover',(e,d)=>{tooltip.style.display='block';tooltip.style.left=(e.offsetX+12)+'px';tooltip.style.top=(e.offsetY-10)+'px';tooltip.innerHTML=`<strong>${escHtml(d.label)}</strong><br><span style="color:var(--text-dim)">${d.type}</span>`;})
+    .on('mousemove',e=>{tooltip.style.left=(e.offsetX+12)+'px';tooltip.style.top=(e.offsetY-10)+'px';})
+    .on('mouseout',()=>{tooltip.style.display='none';});
+  graphSim.on('tick',()=>{link.attr('x1',d=>d.source.x).attr('y1',d=>d.source.y).attr('x2',d=>d.target.x).attr('y2',d=>d.target.y);node.attr('transform',d=>`translate(${d.x},${d.y})`);});
+}
+
+// ═══════════════════════════════════════════════════════════
+// SCENARIOS — with normaliseScenario() to fix undefined tagline
+// ═══════════════════════════════════════════════════════════
+const toneLabels=['SCENARIO 1 — OPTIMISTIC','SCENARIO 2 — CAUTIONARY','SCENARIO 3 — WILDCARD','SCENARIO 4 — SYSTEMIC','SCENARIO 5 — HYBRID','SCENARIO 6 — DISRUPTION'];
+const scColorIdx=(i)=>i%6;
+
+// Normalises raw LLM output — handles models that return alternate field names.
+// This is the primary fix for "undefined" taglines on first generation.
+function normaliseScenario(raw) {
+  return {
+    title:   raw.title   || raw.name        || 'Untitled Scenario',
+    tagline: raw.tagline || raw.description || raw.subtitle || raw.summary || raw.one_liner || raw.hook || '',
+    body:    raw.body    || raw.narrative   || raw.content  || raw.text   || raw.details   || '',
+    drivers: Array.isArray(raw.drivers) ? raw.drivers : Array.isArray(raw.key_drivers) ? raw.key_drivers : Array.isArray(raw.forces) ? raw.forces : [],
+    tone:    raw.tone    || raw.type        || '',
+  };
+}
+
+async function generateScenarios() {
+  if (state.knowledgeBase.length < 2) { log('Build a knowledge base first', 'warn'); return; }
+  const btn = document.getElementById('btn-gen-scenarios');
+  btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Generating…';
+  showTab('scenarios');
+  document.getElementById('scenarios-empty').style.display = 'none';
+  document.getElementById('scenarios-grid').style.display = 'none';
+  document.getElementById('scenarios-loading').classList.add('active');
+  document.getElementById('scenarios-loading-sub').textContent = 'Synthesising knowledge base into divergent futures…';
+  state.scenarios = []; document.getElementById('scenarios-grid').innerHTML = '';
+  log('Generating 3 divergent scenarios…', 'info');
+
+  const kbSummary = state.knowledgeBase.slice(0,18).map(a=>`[${a.source}] ${a.title}: ${a.excerpt.slice(0,200)}`).join('\n\n');
+  const allKws = [...state.keywords.core,...state.keywords.adjacent,...state.keywords.guide,...state.keywords.discovered].join(', ');
+
+  // CRITICAL FIX: Explicit schema with example prevents models returning wrong field names.
+  const prompt = `You are a strategic foresight expert. Generate 3 sharply different 2040 future scenarios.
+
+TOPIC: "${state.topic}"
+CONCEPTS: ${allKws}
+
+KNOWLEDGE BASE:
+${kbSummary}
+
+Create OPTIMISTIC, CAUTIONARY, and WILDCARD scenarios. Be specific, draw on economic, social, health, environmental, political dimensions.
+
+EVERY scenario MUST have ALL of these exact JSON field names:
+- "title": 3-6 word evocative title
+- "tagline": single sentence capturing the scenario essence (10-20 words)
+- "body": 2-3 paragraph vivid description (150-200 words)
+- "drivers": array of exactly 4 key driving forces as strings
+- "tone": "optimistic", "cautionary", or "wildcard"
+
+Return ONLY valid JSON, NO markdown fences, NO extra fields:
+{
+  "scenarios": [
+    {
+      "title": "The Quiet Revolution",
+      "tagline": "Distributed energy and shared mobility quietly reshape cities from the ground up.",
+      "body": "By 2040...",
+      "drivers": ["distributed solar", "shared mobility platforms", "urban densification", "battery breakthroughs"],
+      "tone": "optimistic"
+    },
+    {
+      "title": "...",
+      "tagline": "A single sentence describing this cautionary future.",
+      "body": "...",
+      "drivers": ["...", "...", "...", "..."],
+      "tone": "cautionary"
+    },
+    {
+      "title": "...",
+      "tagline": "A single sentence capturing this wildcard scenario.",
+      "body": "...",
+      "drivers": ["...", "...", "...", "..."],
+      "tone": "wildcard"
+    }
+  ]
+}`;
+
+  try {
+    const result = await llm([
+      { role:'system', content:'You are a strategic foresight expert. Return ONLY valid JSON. Always include title, tagline, body, drivers, and tone for every scenario.' },
+      { role:'user', content:prompt }
+    ], 0.85, 2200);
+    const parsed = parseJSON(result);
+    document.getElementById('scenarios-loading').classList.remove('active');
+    if (parsed?.scenarios?.length) {
+      parsed.scenarios.forEach((raw, i) => {
+        const s = normaliseScenario(raw);
+        const sc = { id:`sc-${Date.now()}-${i}`, ...s, index:i };
+        state.scenarios.push(sc);
+        appendScenarioCard(sc, state.scenarios.length - 1);
       });
-      
-      if (merged.length < 10) {
-        const fallback = generateFallbackConnections(currentTopic);
-        fallback.forEach(fb => {
-          if (!existingLabels.has(fb.valueLabel.toLowerCase())) {
-            merged.push(fb);
-          }
-        });
-      }
-      
-      return merged;
-    }
+      document.getElementById('scenarios-grid').style.display = 'grid';
+      document.getElementById('sc-count').textContent = `${state.scenarios.length} scenarios`;
+      document.getElementById('sc-footer-status').textContent = `${state.scenarios.length} scenarios from ${state.knowledgeBase.length} articles`;
+      document.getElementById('btn-more-scenarios').style.display = 'inline-flex';
+      document.getElementById('btn-regen').style.display = 'inline-flex';
+      document.getElementById('btn-go-explore').style.display = 'inline-flex';
+      document.getElementById('btn-go-compare').style.display = 'inline-flex';
+      renderChatNav();
+      log(`Generated ${state.scenarios.length} scenarios`, 'ok');
+    } else { log('Failed to parse scenarios', 'err'); document.getElementById('scenarios-empty').style.display='flex'; }
+  } catch(e) {
+    document.getElementById('scenarios-loading').classList.remove('active');
+    log(`Scenario generation error: ${e.message}`, 'err');
+    document.getElementById('scenarios-empty').style.display='flex';
+  }
+  btn.disabled = false; btn.innerHTML = '◇ Generate Scenarios →';
+}
 
-    function generateFallbackConnections(topic) {
-      const themes = ['technology', 'society', 'economy', 'environment', 'culture', 'politics'];
-      const modifiers = ['future', 'impact', 'transformation', 'disruption', 'evolution', 'paradigm shift'];
-      const connections = [];
-      
-      for (let i = 0; i < 15; i++) {
-        const theme = themes[Math.floor(Math.random() * themes.length)];
-        const modifier = modifiers[Math.floor(Math.random() * modifiers.length)];
-        connections.push({
-          propertyLabel: 'conceptual link',
-          valueLabel: `${topic} + ${theme} ${modifier}`,
-          source: 'generated'
-        });
-      }
-      return connections;
-    }
-
-    // Build network visualization
-    function buildNetwork(centerTopic, connections) {
-      nodes = [{ id: centerTopic, label: centerTopic, group: 0, strength: 1.0 }];
-      links = [];
-
-      const propertyGroups = {};
-      connections.forEach(conn => {
-        const key = `${conn.propertyLabel}-${conn.source || 'unknown'}`;
-        if (!propertyGroups[key]) {
-          propertyGroups[key] = Object.keys(propertyGroups).length + 1;
-        }
+async function generateMoreScenarios() {
+  if (state.knowledgeBase.length < 2) return;
+  const btn = document.getElementById('btn-more-scenarios');
+  btn.disabled = true; btn.innerHTML = '<span class="spin"></span>';
+  log('Generating 3 more scenarios…', 'info');
+  const kbSummary = state.knowledgeBase.slice(0,18).map(a=>`[${a.source}] ${a.title}: ${a.excerpt.slice(0,180)}`).join('\n\n');
+  const allKws = [...state.keywords.core,...state.keywords.adjacent,...state.keywords.guide,...state.keywords.discovered].join(', ');
+  const existing = state.scenarios.map(s=>s.title).join(', ');
+  const prompt = `Generate 3 NEW future scenarios for 2040 different from: ${existing}.
+TOPIC: "${state.topic}" | CONCEPTS: ${allKws}
+KB: ${kbSummary}
+EVERY scenario MUST have: "title", "tagline" (1 sentence), "body" (150-200w), "drivers" (array of 4), "tone".
+Return ONLY valid JSON: {"scenarios":[{"title":"...","tagline":"...","body":"...","drivers":["...","...","...","..."],"tone":"..."},{"title":"...","tagline":"...","body":"...","drivers":["...","...","...","..."],"tone":"..."},{"title":"...","tagline":"...","body":"...","drivers":["...","...","...","..."],"tone":"..."}]}`;
+  try {
+    const result = await llm([
+      { role:'system', content:'You are a foresight expert. Return only valid JSON with title, tagline, body, drivers, and tone for every scenario.' },
+      { role:'user', content:prompt }
+    ], 0.9, 2200);
+    const parsed = parseJSON(result);
+    if (parsed?.scenarios?.length) {
+      parsed.scenarios.forEach(raw => {
+        const s = normaliseScenario(raw);
+        const sc = { id:`sc-${Date.now()}-${Math.random().toString(36).slice(2,5)}`, ...s, index:state.scenarios.length };
+        state.scenarios.push(sc); appendScenarioCard(sc, state.scenarios.length-1);
       });
-
-      connections.forEach((conn, i) => {
-        const nodeId = conn.valueLabel;
-        if (!nodes.find(n => n.id === nodeId)) {
-          const groupKey = `${conn.propertyLabel}-${conn.source || 'unknown'}`;
-          nodes.push({ 
-            id: nodeId, 
-            label: conn.valueLabel, 
-            group: propertyGroups[groupKey] || 1,
-            strength: Math.random() * 0.5 + 0.3,
-            source: conn.source
-          });
-        }
-        
-        links.push({ 
-          source: centerTopic, 
-          target: nodeId,
-          strength: Math.random() * 0.5 + 0.3,
-          relationship: conn.propertyLabel
-        });
-      });
-
-      renderNetwork();
+      document.getElementById('sc-count').textContent = `${state.scenarios.length} scenarios`;
+      renderChatNav(); log(`Added ${parsed.scenarios.length} more`, 'ok');
     }
+  } catch(e) { log(`More scenarios error: ${e.message}`, 'err'); }
+  btn.disabled = false; btn.innerHTML = '+ 3 More';
+}
 
-    // Network rendering with D3
-    function setupNetwork() {
-      const svg = d3.select('#network-svg');
-      const container = document.getElementById('network');
-      const width = container.clientWidth;
-      const height = container.clientHeight;
-      svg.attr('width', width).attr('height', height);
+function appendScenarioCard(sc, absIdx) {
+  const grid = document.getElementById('scenarios-grid');
+  const ci = scColorIdx(absIdx);
+  const card = document.createElement('div');
+  card.className = `scenario-card sc-color-${ci}`;
+  card.style.animationDelay = (absIdx%3*0.1)+'s';
+  // FIX: only render tagline element if it has content
+  const taglineHtml = sc.tagline ? `<div class="sc-tagline">${escHtml(sc.tagline)}</div>` : '';
+  card.innerHTML = `
+    <div class="sc-index">${toneLabels[absIdx]||`SCENARIO ${absIdx+1}`}</div>
+    <div class="sc-title">${escHtml(sc.title)}</div>
+    ${taglineHtml}
+    <div class="sc-body">${escHtml(sc.body)}</div>
+    <div class="sc-drivers"><div class="sc-driver-label">Key Drivers</div><div class="sc-driver-tags">${(sc.drivers||[]).map(d=>`<span class="sc-driver-tag">${escHtml(d)}</span>`).join('')}</div></div>
+    <div class="sc-actions">
+      <button class="btn btn-ghost" onclick="exploreScenario('${sc.id}')">◐ Explore</button>
+      <button class="btn btn-ghost" id="save-btn-${sc.id}" onclick="saveScenarioToVaultWithFeedback('${sc.id}',this)">⬡ Save</button>
+      <button class="btn btn-ghost" onclick="showFullScenario('${sc.id}')">↗ Full</button>
+    </div>`;
+  grid.appendChild(card);
+}
+
+function showFullScenario(scenarioId) {
+  const sc = state.scenarios.find(s=>s.id===scenarioId); if (!sc) return;
+  document.getElementById('modal-title').textContent = sc.title;
+  document.getElementById('modal-body').textContent = `${sc.tagline}\n\n${sc.body}\n\nKey Drivers:\n${(sc.drivers||[]).map(d=>'• '+d).join('\n')}`;
+  document.getElementById('modal-actions').innerHTML = `<button class="btn btn-teal" onclick="exploreScenario('${sc.id}');closeModal()">◐ Explore</button><button class="btn btn-ghost" onclick="saveScenarioToVault('${sc.id}');closeModal()">⬡ Save</button><button class="btn btn-ghost" onclick="closeModal()">Close</button>`;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function renderChatNav() {
+  const pills = document.getElementById('chat-nav-pills'); pills.innerHTML = '';
+  const colors=['var(--amber)','var(--teal)','var(--rose)','var(--violet)','var(--green)','#60a5fa'];
+  state.scenarios.forEach((sc,i) => {
+    const pill=document.createElement('button'); pill.className='chat-nav-pill'; pill.id=`pill-${sc.id}`;
+    pill.onclick=()=>selectChatScenario(sc.id);
+    pill.textContent=sc.title.length>20?sc.title.slice(0,18)+'…':sc.title;
+    pills.appendChild(pill);
+  });
+}
+function exploreScenario(scenarioId) { showTab('explore'); selectChatScenario(scenarioId); }
+function selectChatScenario(scenarioId) {
+  state.activeChatScenario = scenarioId;
+  const sc = state.scenarios.find(s=>s.id===scenarioId); if (!sc) return;
+  document.querySelectorAll('.chat-nav-pill').forEach(p=>p.classList.remove('selected'));
+  const pill=document.getElementById(`pill-${scenarioId}`); if(pill) pill.classList.add('selected');
+  document.getElementById('chat-context-bar').innerHTML=`Exploring: <b>${escHtml(sc.title)}</b> — Ask anything about this future world`;
+  if (!state.chatHistory[scenarioId]) state.chatHistory[scenarioId]=[];
+  document.getElementById('chat-suggestions').style.display='flex';
+  renderChatMessages(scenarioId);
+}
+function renderChatMessages(scenarioId) {
+  const container=document.getElementById('chat-messages');
+  const history=state.chatHistory[scenarioId]||[];
+  if (history.length===0) {
+    container.innerHTML=`<div class="empty-state" style="height:auto;padding:40px 20px;"><div class="empty-state-icon" style="font-size:28px;">◐</div><div>Ask anything about this future world</div></div>`; return;
+  }
+  container.innerHTML='';
+  history.forEach(msg=>{if(msg.role!=='system') appendChatMessage(msg.role,msg.content,false,scenarioId,[]);});
+  container.scrollTop=container.scrollHeight;
+}
+function appendChatMessage(role, content, animate=true, scenarioId=null, evidence=[]) {
+  const container=document.getElementById('chat-messages');
+  const empty=container.querySelector('.empty-state'); if(empty) empty.remove();
+  const div=document.createElement('div'); div.className=`chat-msg ${role}`;
+  const ts=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  let metaExtras='';
+  if (role==='assistant'&&scenarioId) metaExtras=`<button class="msg-save-btn" onclick="saveArtifactFromMsg(this,'${scenarioId}')">⬡ Save</button>`;
+  const sourceLabel=s=>s==='arxiv'?'arXiv':s==='semantic-scholar'?'S2':s==='crossref'?'CR':s==='openlibrary'?'OL':'Wiki';
+  let evidenceHtml='';
+  if (role==='assistant'&&evidence.length>0) {
+    const chips=evidence.map(a=>`<span class="evidence-chip" onclick="highlightKbCard('${a.id}')" title="${escHtml(a.title)}"><span class="evidence-chip-src">${sourceLabel(a.source)}</span>${escHtml(a.title.length>28?a.title.slice(0,26)+'…':a.title)}</span>`).join('');
+    evidenceHtml=`<div class="evidence-row"><span class="evidence-label">sources ·</span>${chips}</div>`;
+  }
+  div.innerHTML=`<div class="msg-bubble">${escHtml(content)}</div>${evidenceHtml}<div class="msg-meta">${ts} ${metaExtras}</div>`;
+  container.appendChild(div); container.scrollTop=container.scrollHeight;
+}
+async function sendChat() {
+  const input=document.getElementById('chat-input');
+  const msg=input.value.trim(); if(!msg||!state.activeChatScenario) return;
+  const scenarioId=state.activeChatScenario;
+  const sc=state.scenarios.find(s=>s.id===scenarioId);
+  input.value=''; input.style.height='38px';
+  state.chatHistory[scenarioId].push({role:'user',content:msg});
+  appendChatMessage('user',msg,true,scenarioId);
+  const kbContext=state.knowledgeBase.slice(0,10).map(a=>`${a.title}: ${a.excerpt.slice(0,150)}`).join('\n');
+  const systemPrompt=`You are a foresight consultant exploring a specific future scenario. Answer vividly and concretely.\n\nSCENARIO: "${sc.title}"\n${sc.tagline}\n\nDESCRIPTION:\n${sc.body}\n\nDRIVERS: ${(sc.drivers||[]).join(', ')}\n\nRESEARCH:\n${kbContext}\n\nTOPIC: ${state.topic}\n\nRespond 150-250 words.`;
+  const messages=[{role:'system',content:systemPrompt},...state.chatHistory[scenarioId].filter(m=>m.role!=='system')];
+  const container=document.getElementById('chat-messages');
+  const typing=document.createElement('div'); typing.className='chat-msg assistant'; typing.id='typing-indicator';
+  typing.innerHTML=`<div class="msg-bubble" style="color:var(--text-dim)"><span class="spin"></span> thinking…</div>`;
+  container.appendChild(typing); container.scrollTop=container.scrollHeight;
+  try {
+    const response=await llm(messages,0.8,600);
+    typing.remove();
+    state.chatHistory[scenarioId].push({role:'assistant',content:response});
+    const evidence=findEvidenceForResponse(response);
+    appendChatMessage('assistant',response,true,scenarioId,evidence);
+    if(evidence.length) log(`Evidence: ${evidence.length} source(s) matched`,'info');
+  } catch(e) { typing.remove(); appendChatMessage('assistant',`Error: ${e.message}`,true); }
+}
+function chatKeydown(e) { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChat();} }
+function useSuggestion(btn) { document.getElementById('chat-input').value=btn.textContent; sendChat(); }
+
+function saveArtifactFromMsg(btn, scenarioId) {
+  const content=btn.closest('.chat-msg').querySelector('.msg-bubble').textContent;
+  const sc=state.scenarios.find(s=>s.id===scenarioId);
+  let entry=state.vault.find(v=>v.scenarioId===scenarioId);
+  if (!entry) { entry={id:Date.now(),scenarioId,topic:state.topic,scenarioTitle:sc?.title||'Scenario',scenarioBody:sc?.body||'',drivers:sc?.drivers||[],artifacts:[],savedAt:new Date().toISOString(),expanded:true}; state.vault.push(entry); }
+  entry.artifacts.push({id:Date.now(),type:'Chat Artifact',content,savedAt:new Date().toISOString()});
+  state.vault.forEach(v=>{v.expanded=v.scenarioId===scenarioId;});
+  saveVaultToStorage(); renderVault(scenarioId);
+  btn.textContent='✓ Saved'; btn.style.color='var(--green)'; btn.style.borderColor='var(--green)';
+  log(`Artifact saved: "${sc?.title}"`,'ok');
+}
+function saveScenarioToVaultWithFeedback(scenarioId,btn) {
+  saveScenarioToVault(scenarioId);
+  btn.classList.add('btn-saved'); btn.textContent='✓ Saved';
+  setTimeout(()=>{btn.classList.remove('btn-saved');btn.textContent='⬡ Save';},2200);
+}
+
+function saveScenarioToVault(scenarioId) {
+  const sc=state.scenarios.find(s=>s.id===scenarioId); if(!sc) return;
+  if (state.vault.find(v=>v.scenarioId===scenarioId)) { log(`"${sc.title}" already in vault`,'warn'); return; }
+  state.vault.push({id:Date.now(),scenarioId,topic:state.topic,scenarioTitle:sc.title,scenarioTagline:sc.tagline,scenarioBody:sc.body,drivers:sc.drivers||[],artifacts:[],savedAt:new Date().toISOString(),expanded:true,kbSnapshot:state.knowledgeBase.slice(0,8).map(a=>({title:a.title,source:a.source}))});
+  saveVaultToStorage(); renderVault();
+  log(`Saved "${sc.title}" to vault`,'ok');
+}
+function saveVaultToStorage() { try{localStorage.setItem('foresight-vault',JSON.stringify(state.vault));}catch(e){} }
+function loadVaultFromStorage() { try{const raw=localStorage.getItem('foresight-vault');if(raw)state.vault=JSON.parse(raw);}catch(e){} }
+
+function renderVault(focusScenarioId=null) {
+  const acc=document.getElementById('vault-accordion'); if(!acc) return;
+  if (state.vault.length===0) { acc.innerHTML=`<div style="padding:24px 16px;font-family:'MonoFont',monospace;font-size:9px;color:var(--text-dim);text-align:center;line-height:1.8;">Save scenarios and artifacts<br>during exploration</div>`; return; }
+  acc.innerHTML='';
+  state.vault.forEach((entry,i)=>{
+    const item=document.createElement('div'); item.className='vault-acc-item'+(entry.expanded?' open':''); item.id=`vault-acc-${entry.scenarioId}`;
+    const driversHtml=entry.drivers?.length?`<div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:6px;">${entry.drivers.map(d=>`<span class="sc-driver-tag">${escHtml(d)}</span>`).join('')}</div>`:'';
+    const artifactsHtml=entry.artifacts.length>0?entry.artifacts.map(a=>`<div class="vault-acc-artifact"><div class="vault-acc-artifact-type">${escHtml(a.type)} · ${new Date(a.savedAt).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</div><div class="vault-acc-artifact-body">${escHtml(a.content)}</div></div>`).join(''):`<div style="font-family:'MonoFont',monospace;font-size:9px;color:var(--text-dim);font-style:italic;padding:4px 0;">No artifacts yet.</div>`;
+    item.innerHTML=`<div class="vault-acc-header" onclick="toggleVaultItem(${i})"><span class="vault-acc-chevron">▶</span><span class="vault-acc-title">${escHtml(entry.scenarioTitle)}</span><span class="vault-acc-badge">${entry.artifacts.length} artifacts</span></div><div class="vault-acc-body"><div class="vault-acc-scenario-text">${escHtml(entry.scenarioBody?.slice(0,180)||'')}…</div>${driversHtml}${artifactsHtml}<div class="vault-acc-actions"><button class="btn btn-ghost" style="font-size:8px;padding:3px 8px;" onclick="exportVaultEntry(${i})">↓ Export</button><button class="btn btn-rose" style="font-size:8px;padding:3px 8px;" onclick="deleteVaultEntry(${i})">× Remove</button></div></div>`;
+    acc.appendChild(item);
+  });
+  if (focusScenarioId) {
+    const idx=state.vault.findIndex(v=>v.scenarioId===focusScenarioId);
+    if (idx!==-1) { state.vault.forEach((v,i)=>{v.expanded=i===idx;}); renderVault(); setTimeout(()=>{const el=document.getElementById(`vault-acc-${focusScenarioId}`);if(el)el.scrollIntoView({behavior:'smooth',block:'nearest'});},50); }
+  }
+}
+function toggleVaultItem(idx) { state.vault[idx].expanded=!state.vault[idx].expanded; renderVault(); }
+function exportVaultEntry(idx) {
+  const entry=state.vault[idx];
+  let md=`# ${entry.scenarioTitle}\n\n**Topic:** ${entry.topic}\n**Saved:** ${entry.savedAt}\n\n`;
+  if(entry.scenarioBody) md+=`## Scenario\n\n${entry.scenarioBody}\n\n`;
+  if(entry.drivers?.length) md+=`## Key Drivers\n\n${entry.drivers.map(d=>'- '+d).join('\n')}\n\n`;
+  if(entry.artifacts?.length){md+=`## Artifacts\n\n`;entry.artifacts.forEach(a=>{md+=`### ${a.type}\n\n${a.content}\n\n---\n\n`;});}
+  const blob=new Blob([md],{type:'text/markdown'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`foresight-${entry.scenarioTitle.replace(/[^a-z0-9]/gi,'-').toLowerCase()}.md`; a.click();
+  log(`Exported "${entry.scenarioTitle}"`,'ok');
+}
+function deleteVaultEntry(idx) { state.vault.splice(idx,1); saveVaultToStorage(); renderVault(); log('Vault entry deleted','warn'); }
+function clearVault() { if(!confirm('Clear all vault entries?')) return; state.vault=[]; saveVaultToStorage(); renderVault(); log('Vault cleared','warn'); }
+
+function addKeywordOnEnter(e) {
+  if (e.key==='Enter') {
+    e.preventDefault();
+    const input=document.getElementById('add-kw-input'); const raw=input.value.trim(); if(!raw) return;
+    const kws=raw.split(',').map(s=>s.trim()).filter(Boolean);
+    kws.forEach(k=>{if(!state.keywords.discovered.includes(k)&&!state.keywords.core.includes(k)&&!state.keywords.guide.includes(k)){state.keywords.discovered.push(k);addGraphNode(k,'discovered',1.5);}});
+    renderKeywordChips(); log(`Added keywords: ${kws.join(', ')}`,'ok'); input.value='';
+  }
+}
+function continueResearchOnEnter(e) { if(e.key==='Enter'){e.preventDefault();continueResearchFromBar();} }
+async function continueResearchFromBar() {
+  const input=document.getElementById('continue-input'); const extra=input.value.trim();
+  if(!extra&&!state.topic){log('Enter a topic first','warn');return;}
+  if(state.researchRunning){log('Research already running','warn');return;}
+  if(!state.topic&&extra){document.getElementById('topic-input').value=extra;input.value='';startResearch();return;}
+  const kwInput=document.getElementById('add-kw-input'); const kwRaw=kwInput?.value.trim();
+  if(kwRaw){kwRaw.split(',').map(s=>s.trim()).filter(Boolean).forEach(k=>{if(!state.keywords.discovered.includes(k)){state.keywords.discovered.push(k);addGraphNode(k,'discovered',1.5);}});kwInput.value='';renderKeywordChips();}
+  const barTerms=extra?extra.split(',').map(s=>s.trim()).filter(Boolean):[];
+  const terms=[...new Set([...barTerms,...state.keywords.discovered.slice(-6)])];
+  if(terms.length===0){log('No new terms','warn');return;}
+  state.stopFlag=false; state.researchRunning=true;
+  const btn=document.getElementById('btn-continue'); btn.disabled=true; btn.innerHTML='<span class="spin"></span>';
+  document.getElementById('btn-stop').style.display='inline-flex';
+  document.getElementById('btn-start-research').disabled=true;
+  document.getElementById('kb-grid').style.display='grid';
+  document.getElementById('kb-empty').style.display='none';
+  log(`Expanding: ${terms.slice(0,4).join(', ')}${terms.length>4?'…':''}`,'info'); setProgress(5);
+  try {
+    let count=0;
+    for(const term of terms) {
+      if(state.stopFlag) break;
+      if(barTerms.includes(term)&&!state.keywords.guide.includes(term)){state.keywords.guide.push(term);addGraphNode(term,'guide',2);renderKeywordChips();}
+      await searchWikipedia(term); await searchArxiv(term); await searchSemanticScholar(term); await searchCrossref(term); await searchOpenLibrary(term);
+      count++; setProgress(5+(count/terms.length)*85);
+      if(state.knowledgeBase.length%4===0&&state.knowledgeBase.length>0) await discoverNewKeywords();
     }
-
-    function renderNetwork() {
-      const svg = d3.select('#network-svg');
-      svg.selectAll('*').remove();
-
-      const container = document.getElementById('network');
-      const width = container.clientWidth;
-      const height = container.clientHeight;
-
-      const g = svg.append('g');
-
-      const zoom = d3.zoom()
-        .scaleExtent([0.1, 4])
-        .on('zoom', (event) => {
-          g.attr('transform', event.transform);
-        });
-
-      svg.call(zoom);
-
-      simulation = d3.forceSimulation(nodes)
-        .force('link', d3.forceLink(links).id(d => d.id).distance(d => 150 / d.strength))
-        .force('charge', d3.forceManyBody().strength(-400))
-        .force('center', d3.forceCenter(width / 2, height / 2))
-        .force('collision', d3.forceCollide().radius(30));
-
-      const link = g.append('g')
-        .selectAll('line')
-        .data(links)
-        .join('line')
-        .attr('class', 'link')
-        .attr('stroke-width', d => d.strength * 2);
-
-      const linkLabel = g.append('g')
-        .selectAll('text')
-        .data(links)
-        .join('text')
-        .attr('class', 'link-label')
-        .text(d => d.relationship || 'related to');
-
-      const node = g.append('g')
-        .selectAll('g')
-        .data(nodes)
-        .join('g')
-        .attr('class', 'node')
-        .call(d3.drag()
-          .on('start', dragStarted)
-          .on('drag', dragged)
-          .on('end', dragEnded));
-
-      node.append('circle')
-        .attr('r', d => d.group === 0 ? 12 : 6)
-        .attr('fill', d => d.group === 0 ? '#2a5' : d3.schemeCategory10[d.group % 10])
-        .attr('stroke', '#fff')
-        .attr('stroke-width', 2);
-
-      node.append('text')
-        .text(d => d.label.length > 25 ? d.label.substring(0, 25) + '...' : d.label)
-        .attr('x', 10)
-        .attr('y', 4);
-
-      node.on('click', (event, d) => {
-        addToCanvas(d.label);
-      });
-
-      node.on('mouseover', (event, d) => {
-        showTooltip(event, d);
-      });
-
-      node.on('mouseout', () => {
-        hideTooltip();
-      });
-
-      simulation.on('tick', () => {
-        link
-          .attr('x1', d => d.source.x)
-          .attr('y1', d => d.source.y)
-          .attr('x2', d => d.target.x)
-          .attr('y2', d => d.target.y);
-
-        linkLabel
-          .attr('x', d => (d.source.x + d.target.x) / 2)
-          .attr('y', d => (d.source.y + d.target.y) / 2);
-
-        node.attr('transform', d => `translate(${d.x},${d.y})`);
-      });
-    }
-
-    function dragStarted(event, d) {
-      if (!event.active) simulation.alphaTarget(0.3).restart();
-      d.fx = d.x;
-      d.fy = d.y;
-    }
-
-    function dragged(event, d) {
-      d.fx = event.x;
-      d.fy = event.y;
-    }
-
-    function dragEnded(event, d) {
-      if (!event.active) simulation.alphaTarget(0);
-      d.fx = null;
-      d.fy = null;
-    }
-
-    function showTooltip(event, d) {
-      const tooltip = document.getElementById('tooltip');
-      tooltip.style.display = 'block';
-      tooltip.style.left = event.pageX + 10 + 'px';
-      tooltip.style.top = event.pageY + 10 + 'px';
-      const sourceInfo = d.source ? `<br>Source: ${d.source}` : '';
-      tooltip.innerHTML = `<strong>${d.label}</strong><br>Strength: ${(d.strength * 100).toFixed(0)}%${sourceInfo}<br>Click to add to workspace`;
-    }
-
-    function hideTooltip() {
-      document.getElementById('tooltip').style.display = 'none';
-    }
-
-    // Canvas workspace
-    function addToCanvas(label) {
-      if (canvasItems.includes(label)) return;
-      
-      canvasItems.push(label);
-      const item = document.createElement('div');
-      item.className = 'canvas-item';
-      
-      const labelSpan = document.createElement('span');
-      labelSpan.textContent = label;
-      
-      const removeBtn = document.createElement('button');
-      removeBtn.className = 'remove-btn';
-      removeBtn.textContent = '×';
-      removeBtn.onclick = () => removeFromCanvas(label, item);
-      
-      item.appendChild(labelSpan);
-      item.appendChild(removeBtn);
-      item.draggable = true;
-      
-      item.addEventListener('dragstart', (e) => {
-        e.dataTransfer.setData('text/plain', label);
-      });
-      
-      document.getElementById('canvas-items').appendChild(item);
-      addMessage('system', `Added "${label}" to workspace`);
-      updateActionButtons();
-    }
-
-    function removeFromCanvas(label, element) {
-      canvasItems = canvasItems.filter(item => item !== label);
-      element.remove();
-      
-      // Reset state when workspace changes
-      isFindingSignals = false;
-      hasGeneratedScenarios = false;
-      
-      addMessage('system', `Removed "${label}" from workspace`);
-      updateActionButtons();
-    }
-
-    function updateActionButtons() {
-      const findBtn = document.getElementById('find-signals-btn');
-      const speculateBtn = document.getElementById('speculate-btn');
-      
-      // Find Signals button: enabled if there are items and not currently finding signals
-      findBtn.disabled = canvasItems.length === 0 || isFindingSignals;
-      
-      // Speculate button: enabled if there are items AND not currently finding signals
-      // Users can speculate without finding signals, but not while signals are being found
-      speculateBtn.disabled = canvasItems.length === 0 || isFindingSignals;
-    }
-
-    // ===== NODE EXPANSION WITH WIKIPEDIA SUMMARIES =====
-    
-    let wikipediaSummaries = {}; // Cache Wikipedia summaries for context
-    
-    async function expandNode(node) {
-      addMessage('assistant', `Expanding "${node.label}"...`);
-      
-      // Visual feedback - highlight the node
-      d3.selectAll('.node circle')
-        .filter(d => d.id === node.id)
-        .transition()
-        .duration(200)
-        .attr('r', d => (d.group === 0 ? 12 : 6) * 1.5)
-        .transition()
-        .duration(200)
-        .attr('r', d => d.group === 0 ? 12 : 6);
-      
-      try {
-        // Fetch both Wikidata and Wikipedia in parallel
-        const [wikidataConnections, wikipediaConnections, summary] = await Promise.all([
-          queryWikidata(node.label),
-          queryWikipedia(node.label),
-          getWikipediaSummary(node.label)
-        ]);
-        
-        // Store summary for later use in speculation
-        if (summary) {
-          wikipediaSummaries[node.label] = summary;
-          addMessage('system', `Retrieved Wikipedia context for "${node.label}"`);
-        }
-        
-        const newConnections = mergeConnections(wikidataConnections, wikipediaConnections);
-        
-        if (newConnections.length > 0) {
-          addMessage('assistant', `Found ${newConnections.length} connections for "${node.label}"`);
-          expandNetwork(node.label, newConnections);
-        } else {
-          addMessage('system', `No additional connections found for "${node.label}"`);
-        }
-      } catch (err) {
-        console.error('Error expanding node:', err);
-        addMessage('system', `Error expanding "${node.label}": ${err.message}`);
-      }
-    }
-    
-    // Get Wikipedia summary/extract for context
-    async function getWikipediaSummary(topic) {
-      try {
-        // First search for the page
-        const searchUrl = `https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(topic)}&limit=1&format=json&origin=*`;
-        const searchRes = await fetch(searchUrl);
-        const [_, titles] = await searchRes.json();
-        
-        if (!titles || titles.length === 0) {
-          return null;
-        }
-        
-        const pageTitle = titles[0];
-        
-        // Get the extract (summary)
-        const extractUrl = `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(pageTitle)}&prop=extracts&exintro=true&explaintext=true&format=json&origin=*`;
-        const extractRes = await fetch(extractUrl);
-        const extractData = await extractRes.json();
-        
-        const pages = extractData.query.pages;
-        const pageId = Object.keys(pages)[0];
-        const extract = pages[pageId].extract;
-        
-        if (extract && extract.length > 100) {
-          // Trim to ~500 chars for context
-          return extract.substring(0, 500) + '...';
-        }
-        
-        return null;
-      } catch (err) {
-        console.error('Wikipedia summary error:', err);
-        return null;
-      }
-    }
-    
-    // Expand network with new connections
-    function expandNetwork(centerLabel, newConnections) {
-      const existingNodeIds = new Set(nodes.map(n => n.id));
-      let addedCount = 0;
-      
-      newConnections.forEach(conn => {
-        const nodeId = conn.valueLabel;
-        if (!existingNodeIds.has(nodeId)) {
-          nodes.push({
-            id: nodeId,
-            label: conn.valueLabel,
-            group: Math.floor(Math.random() * 10) + 1,
-            strength: Math.random() * 0.5 + 0.3,
-            source: conn.source
-          });
-          existingNodeIds.add(nodeId);
-          addedCount++;
-        }
-        
-        // Check if link already exists
-        const linkExists = links.some(l => 
-          (l.source.id === centerLabel && l.target === nodeId) ||
-          (l.target.id === centerLabel && l.source === nodeId)
-        );
-        
-        if (!linkExists) {
-          links.push({
-            source: centerLabel,
-            target: nodeId,
-            strength: Math.random() * 0.5 + 0.3,
-            relationship: conn.propertyLabel
-          });
-        }
-      });
-      
-      if (addedCount > 0) {
-        addMessage('system', `Added ${addedCount} new nodes to the network`);
-        renderNetwork();
-      }
-    }
-
-    // ===== ARXIV INTEGRATION =====
-    
-    // Step 1: Find Leading Signals from arXiv + Google Scholar (ADDITIVE - only fetch new concepts)
-    async function findLeadingSignals() {
-      if (canvasItems.length === 0) {
-        addMessage('system', 'Add some concepts to the workspace first');
-        return;
-      }
-
-      const findBtn = document.getElementById('find-signals-btn');
-      const speculateBtn = document.getElementById('speculate-btn');
-      
-      isFindingSignals = true; // Block speculation while finding signals
-      updateActionButtons();
-      
-      findBtn.innerHTML = 'Finding Signals<span class="spinner"></span>';
-
-      // Determine which concepts are new (don't have insights yet)
-      const newConcepts = canvasItems.filter(concept => !arxivInsights[concept]);
-      const existingConcepts = canvasItems.filter(concept => arxivInsights[concept]);
-
-      if (newConcepts.length === 0) {
-        addMessage('system', 'All concepts already have leading signals. Ready to speculate!');
-        isFindingSignals = false;
-        updateActionButtons();
-        findBtn.textContent = 'Find Leading Signals';
-        return;
-      }
-
-      addMessage('user', 'Find Leading Signals');
-      
-      if (existingConcepts.length > 0) {
-        addMessage('system', `Using existing insights for: ${existingConcepts.join(', ')}`);
-      }
-      
-      addMessage('system', `Querying academic sources for new concepts: ${newConcepts.join(', ')}`);
-
-      try {
-        // Query both arXiv AND Google Scholar for NEW concepts
-        for (const concept of newConcepts) {
-          addMessage('system', `Searching arXiv and Google Scholar for: ${concept}...`);
-          
-          // Query both sources in parallel
-          const [arxivPapers, scholarPapers] = await Promise.all([
-            queryArxiv(concept),
-            queryGoogleScholar(concept)
-          ]);
-          
-          // Merge results
-          const allPapers = [...arxivPapers, ...scholarPapers];
-          
-          if (allPapers.length > 0) {
-            addMessage('assistant', `Found ${arxivPapers.length} arXiv papers + ${scholarPapers.length} Google Scholar papers for "${concept}"`);
-            
-            // Summarize with LLM
-            const summary = await summarizePapers(concept, allPapers);
-            arxivInsights[concept] = { papers: allPapers, summary };
-            
-            // Display insights
-            displayInsights(concept, allPapers, summary);
-          } else {
-            addMessage('system', `No recent papers found for "${concept}"`);
-            // Store empty result so we don't re-fetch
-            arxivInsights[concept] = { papers: [], summary: 'No recent papers found.' };
-          }
-        }
-
-        addMessage('assistant', `Leading signals analysis complete (${newConcepts.length} new, ${existingConcepts.length} cached). Ready to speculate!`);
-        
-      } catch (err) {
-        addMessage('system', `Error finding signals: ${err.message}`);
-        console.error(err);
-      } finally {
-        isFindingSignals = false;
-        findBtn.textContent = 'Find Leading Signals';
-        updateActionButtons();
-      }
-    }
-
-    // Query Google Scholar using web scraping approach
-    async function queryGoogleScholar(query) {
-      try {
-        const searchQuery = encodeURIComponent(query);
-        // Use a search aggregator API that includes Scholar results
-        // We'll use a simple HTML scraping approach via CORS proxy
-        const scholarUrl = `https://scholar.google.com/scholar?q=${searchQuery}&hl=en&as_sdt=0,5&num=10`;
-        
-        // Try CORS proxy
-        const proxies = [
-          `https://corsproxy.io/?${encodeURIComponent(scholarUrl)}`,
-          `https://api.allorigins.win/get?url=${encodeURIComponent(scholarUrl)}`
-        ];
-        
-        let htmlText = null;
-        
-        for (const url of proxies) {
-          try {
-            const response = await fetch(url);
-            if (response.ok) {
-              const data = await response.json();
-              htmlText = data.contents || await response.text();
-              break;
-            }
-          } catch (err) {
-            continue;
-          }
-        }
-        
-        if (!htmlText) {
-          console.log('Google Scholar fetch failed, continuing without it');
-          return [];
-        }
-        
-        // Parse HTML to extract paper info
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(htmlText, 'text/html');
-        const papers = [];
-        
-        // Google Scholar uses class "gs_ri" for each result
-        const results = doc.querySelectorAll('.gs_ri');
-        
-        results.forEach((result, index) => {
-          if (index >= 5) return; // Limit to 5 results
-          
-          const titleEl = result.querySelector('h3.gs_rt a');
-          const snippetEl = result.querySelector('.gs_rs');
-          const authorsEl = result.querySelector('.gs_a');
-          
-          if (titleEl && snippetEl) {
-            const title = titleEl.textContent.trim();
-            const snippet = snippetEl.textContent.trim();
-            const authors = authorsEl ? authorsEl.textContent.split('-')[0].trim() : 'Unknown';
-            const link = titleEl.getAttribute('href') || '';
-            
-            papers.push({
-              title,
-              summary: snippet,
-              authors,
-              link,
-              published: new Date().toISOString(), // Scholar doesn't always have clear dates
-              source: 'scholar'
-            });
-          }
-        });
-        
-        return papers;
-      } catch (err) {
-        console.error('Google Scholar query error:', err);
-        return []; // Fail gracefully, arXiv results will still work
-      }
-    }
-
-    // Query arXiv API (with multiple fallback strategies)
-    async function queryArxiv(query) {
-      try {
-        const searchQuery = encodeURIComponent(query);
-        // Fetch 20 papers for trend analysis, but will show only top 5 in UI
-        const arxivUrl = `https://export.arxiv.org/api/query?search_query=all:${searchQuery}&start=0&max_results=20&sortBy=submittedDate&sortOrder=descending`;
-        
-        // Try multiple CORS proxies in order
-        const proxies = [
-          `https://corsproxy.io/?${encodeURIComponent(arxivUrl)}`,
-          `https://api.allorigins.win/raw?url=${encodeURIComponent(arxivUrl)}`,
-          arxivUrl // Direct attempt as last resort
-        ];
-        
-        let xmlText = null;
-        let lastError = null;
-        
-        for (const url of proxies) {
-          try {
-            const response = await fetch(url);
-            if (response.ok) {
-              xmlText = await response.text();
-              break;
-            }
-          } catch (err) {
-            lastError = err;
-            continue;
-          }
-        }
-        
-        if (!xmlText) {
-          throw new Error(`Failed to fetch from arXiv: ${lastError?.message || 'All proxies failed'}`);
-        }
-        
-        // Parse XML
-        const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
-        
-        const entries = xmlDoc.getElementsByTagName('entry');
-        const papers = [];
-        
-        for (let i = 0; i < entries.length; i++) {
-          const entry = entries[i];
-          
-          const title = entry.getElementsByTagName('title')[0]?.textContent.trim();
-          const summary = entry.getElementsByTagName('summary')[0]?.textContent.trim();
-          const published = entry.getElementsByTagName('published')[0]?.textContent.trim();
-          const link = entry.getElementsByTagName('id')[0]?.textContent.trim();
-          
-          if (title && summary) {
-            papers.push({
-              title,
-              summary,
-              published,
-              link
-            });
-          }
-        }
-        
-        return papers;
-      } catch (err) {
-        console.error('arXiv query error:', err);
-        return [];
-      }
-    }
-
-    // Summarize papers with LLM and detect trends
-    async function summarizePapers(concept, papers) {
-      try {
-        // TREND DETECTION: Analyze publication dates (primarily from arXiv which has reliable dates)
-        const arxivPapers = papers.filter(p => !p.source || p.source !== 'scholar');
-        const trendAnalysis = analyzeTrends(arxivPapers, concept);
-        
-        const papersText = papers.slice(0, 10).map((p, i) => {
-          const source = p.source === 'scholar' ? '[Google Scholar]' : '[arXiv]';
-          return `Paper ${i + 1} ${source}: "${p.title}"\n${p.authors ? `Authors: ${p.authors}\n` : ''}Abstract: ${p.summary.substring(0, 250)}...`;
-        }).join('\n\n');
-
-        const sourceBreakdown = `Sources: ${papers.filter(p => !p.source || p.source !== 'scholar').length} arXiv papers, ${papers.filter(p => p.source === 'scholar').length} Google Scholar papers`;
-
-        const prompt = `You are a futures researcher analyzing leading indicators and weak signals. 
-
-Given these recent research papers about "${concept}":
-
-${papersText}
-
-${trendAnalysis ? `\nTrend insight: ${trendAnalysis}\n` : ''}
-${sourceBreakdown}
-
-Identify 2-3 key insights or leading indicators that suggest emerging trends or future developments. Focus on:
-- Novel applications or approaches
-- Convergence with other fields
-- Potential societal/technological impacts
-- Weak signals of change
-
-Keep your response concise (3-4 sentences total).`;
-
-        const response = await fetch(`${API_BASE()}/chat/completions`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: modelType,
-            messages: [{ role: 'user', content: prompt }],
-            temperature: 0.7,
-            max_tokens: 250
-          })
-        });
-
-        if (!response.ok) throw new Error('LLM request failed');
-
-        const data = await response.json();
-        let summary = data.choices[0].message.content;
-        
-        // Prepend trend analysis if available
-        if (trendAnalysis) {
-          summary = `📈 ${trendAnalysis}\n\n${summary}`;
-        }
-        
-        return summary;
-      } catch (err) {
-        console.error('LLM summarization error:', err);
-        return 'Unable to generate summary - LLM not available.';
-      }
-    }
-    
-    // Analyze publication trends
-    function analyzeTrends(papers, concept) {
-      if (papers.length < 3) return null;
-      
-      try {
-        // Parse publication dates
-        const dates = papers.map(p => new Date(p.published));
-        const now = new Date();
-        
-        // Count papers by time period
-        const last3Months = dates.filter(d => (now - d) / (1000 * 60 * 60 * 24) <= 90).length;
-        const last6Months = dates.filter(d => (now - d) / (1000 * 60 * 60 * 24) <= 180).length;
-        const lastYear = dates.filter(d => (now - d) / (1000 * 60 * 60 * 24) <= 365).length;
-        
-        // Simple growth calculation
-        const recentActivity = last3Months / 3; // avg per month
-        const olderActivity = (last6Months - last3Months) / 3; // avg per month in months 3-6
-        
-        if (olderActivity > 0 && recentActivity > olderActivity) {
-          const growthRate = ((recentActivity - olderActivity) / olderActivity * 100).toFixed(0);
-          if (growthRate > 50) {
-            return `Research activity increased ${growthRate}% in the last 3 months`;
-          }
-        }
-        
-        // Check for consistent activity
-        if (lastYear >= 4) {
-          return `Steady research activity with ${lastYear} papers in the last year`;
-        }
-        
-        return null;
-      } catch (err) {
-        console.error('Trend analysis error:', err);
-        return null;
-      }
-    }
-
-    // Display insights in chat
-    function displayInsights(concept, papers, summary) {
-      let html = `<div class="arxiv-insight">`;
-      html += `<h4>📊 Leading Signals: ${concept}</h4>`;
-      
-      // Separate papers by source
-      const arxivPapers = papers.filter(p => !p.source || p.source !== 'scholar');
-      const scholarPapers = papers.filter(p => p.source === 'scholar');
-      
-      // Show top 3 papers total, mixing sources
-      const displayPapers = papers.slice(0, 3);
-      
-      displayPapers.forEach((paper, i) => {
-        const sourceLabel = paper.source === 'scholar' ? '📚 Scholar' : '📄 arXiv';
-        html += `<div class="paper">`;
-        html += `<div class="paper-title">${i + 1}. ${paper.title} <span style="color: #888; font-size: 9px;">[${sourceLabel}]</span></div>`;
-        if (paper.authors) {
-          html += `<div style="font-size: 10px; color: #666; margin-top: 2px;">${paper.authors}</div>`;
-        }
-        html += `<div style="font-size: 10px; color: #777;">${new Date(paper.published).toLocaleDateString()}</div>`;
-        html += `</div>`;
-      });
-      
-      if (papers.length > 3) {
-        html += `<div style="font-size: 10px; color: #888; margin-top: 5px;">...and ${papers.length - 3} more papers analyzed (${arxivPapers.length} arXiv, ${scholarPapers.length} Scholar)</div>`;
-      } else {
-        html += `<div style="font-size: 10px; color: #888; margin-top: 5px;">Sources: ${arxivPapers.length} arXiv, ${scholarPapers.length} Scholar</div>`;
-      }
-      
-      html += `<div class="summary"><strong>Key Insights:</strong> ${summary}</div>`;
-      html += `</div>`;
-      
-      addMessage('insights', html, true);
-    }
-
-    // Step 2: Generate scenarios using insights
-    function formatScenarios(rawText) {
-      let text = rawText.replace(/\*\*/g, '');
-      text = text.replace(/(Scenario \d+:)/g, '<br><strong>$1</strong>');
-      text = text.replace(/(<br><strong>Scenario \d+:<\/strong><br>)/g, '$1<br>');
-      return text;
-    }
-
-    async function generateScenarios() {
-      if (canvasItems.length === 0) {
-        addMessage('system', 'Add some concepts to the workspace first');
-        return;
-      }
-
-      if (isFindingSignals) {
-        addMessage('system', 'Please wait for signal finding to complete before speculating');
-        return;
-      }
-
-      const speculateBtn = document.getElementById('speculate-btn');
-      speculateBtn.disabled = true;
-      speculateBtn.innerHTML = 'Speculating<span class="spinner"></span>';
-
-      addMessage('user', 'Speculate on future scenarios');
-      addMessage('system', 'Analyzing workspace concepts and generating scenarios...');
-
-      try {
-        const concepts = canvasItems.join(', ');
-        
-        // Build context from Wikipedia summaries if available
-        let wikiContext = '';
-        const conceptsWithSummaries = canvasItems.filter(c => wikipediaSummaries[c]);
-        if (conceptsWithSummaries.length > 0) {
-          wikiContext = '\n\nBackground context:\n';
-          conceptsWithSummaries.forEach(concept => {
-            wikiContext += `- ${concept}: ${wikipediaSummaries[concept].substring(0, 200)}...\n`;
-          });
-        }
-        
-        // Build context from arXiv insights if available
-        let insightsContext = '';
-        if (Object.keys(arxivInsights).length > 0) {
-          insightsContext = '\n\nRecent research insights:\n';
-          for (const [concept, data] of Object.entries(arxivInsights)) {
-            if (data.summary && data.summary !== 'No recent papers found.') {
-              insightsContext += `- ${concept}: ${data.summary}\n`;
-            }
-          }
-        }
-
-        const prompt = `You are a futures researcher analyzing weak signals and emerging trends. 
-
-Given these interconnected concepts: ${concepts}${wikiContext}${insightsContext}
-
-Identify 3 potential future scenarios or weak cultural signals. Be creative and look for non-obvious connections between these concepts${insightsContext ? ' and the research insights provided' : ''}. 
-
-Each scenario should:
-- Be 2-3 sentences long
-- Connect multiple concepts in unexpected ways
-- Highlight emerging possibilities or tensions
-- Feel plausible yet surprising
-
-Format as:
-Scenario 1: [title/description]
-Scenario 2: [title/description]  
-Scenario 3: [title/description]`;
-
-        const response = await fetch(`${API_BASE()}/chat/completions`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: modelType,
-            messages: [{ role: 'user', content: prompt }],
-            temperature: 0.85,
-            max_tokens: 400
-          })
-        });
-
-        if (!response.ok) throw new Error('LLM request failed');
-
-        const data = await response.json();
-        let scenarios = data.choices[0].message.content;
-
-        const formatted = formatScenarios(scenarios);
-        addMessage('assistant', formatted, true);
-        
-        // Store scenarios for chat context
-        lastScenarios = scenarios;
-        hasGeneratedScenarios = true;
-        
-        // Enable chat input after scenarios are generated
-        enableChatInput();
-        
-      } catch (err) {
-        addMessage('system', 'Could not connect to LM Studio. Make sure it\'s running and the API URL is correct.');
-        console.error(err);
-      } finally {
-        speculateBtn.disabled = false;
-        speculateBtn.textContent = 'Speculate';
-      }
-    }
-
-    // Initialize on load
-    window.onload = init;
-    window.onresize = () => {
-      if (nodes.length > 0) renderNetwork();
-    };
-
-    document.getElementById('topic-input').addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') exploreTopic();
-    });
-
-    document.getElementById('chat-input').addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') sendChatMessage();
-    });
-
-    // ===== DRAGGABLE RESIZE HANDLES =====
-    
-    function initResizeHandles() {
-      const resizeChat = document.getElementById('resize-chat');
-      const resizeNetwork = document.getElementById('resize-network');
-      const body = document.body;
-      
-      let isResizing = false;
-      let currentHandle = null;
-      let startX = 0;
-      let startWidths = [];
-      
-      function startResize(e, handle) {
-        isResizing = true;
-        currentHandle = handle;
-        startX = e.clientX;
-        
-        // Get current grid column widths
-        const computedStyle = window.getComputedStyle(body);
-        const gridColumns = computedStyle.gridTemplateColumns.split(' ');
-        startWidths = gridColumns.map(w => parseFloat(w));
-        
-        document.body.style.cursor = 'col-resize';
-        document.body.style.userSelect = 'none';
-        
-        e.preventDefault();
-      }
-      
-      function doResize(e) {
-        if (!isResizing) return;
-        
-        const deltaX = e.clientX - startX;
-        
-        if (currentHandle === resizeChat) {
-          // Resizing between chat and network
-          const newChatWidth = Math.max(200, Math.min(800, startWidths[0] + deltaX));
-          const networkWidth = startWidths[2] - deltaX;
-          
-          if (networkWidth >= 300) {
-            body.style.gridTemplateColumns = `${newChatWidth}px 5px 1fr 5px ${startWidths[4]}px`;
-          }
-        } else if (currentHandle === resizeNetwork) {
-          // Resizing between network and canvas
-          const newCanvasWidth = Math.max(250, Math.min(800, startWidths[4] - deltaX));
-          
-          body.style.gridTemplateColumns = `${startWidths[0]}px 5px 1fr 5px ${newCanvasWidth}px`;
-        }
-        
-        // Update network visualization if it exists
-        if (nodes.length > 0) {
-          setTimeout(() => renderNetwork(), 0);
-        }
-      }
-      
-      function stopResize() {
-        if (isResizing) {
-          isResizing = false;
-          currentHandle = null;
-          document.body.style.cursor = '';
-          document.body.style.userSelect = '';
-        }
-      }
-      
-      resizeChat.addEventListener('mousedown', (e) => startResize(e, resizeChat));
-      resizeNetwork.addEventListener('mousedown', (e) => startResize(e, resizeNetwork));
-      document.addEventListener('mousemove', doResize);
-      document.addEventListener('mouseup', stopResize);
-    }
-    
-    // Initialize resize handles
-    initResizeHandles();
-  </script>
+    log(`Expansion complete — ${state.knowledgeBase.length} articles`,'ok');
+    document.getElementById('research-status').textContent=`${state.knowledgeBase.length} articles`;
+  } catch(e) { log(`Expansion error: ${e.message}`,'err'); }
+  finally {
+    state.researchRunning=false; btn.disabled=false; btn.innerHTML='↺ Run';
+    document.getElementById('btn-start-research').disabled=false; document.getElementById('btn-stop').style.display='none';
+    setProgress(null); rerenderGraph(); if(extra) input.value='';
+  }
+}
+async function continueResearch() { await continueResearchFromBar(); }
+
+function setCompareView(view) {
+  state.compareView=view;
+  document.getElementById('compare-toggle-matrix').classList.toggle('active',view==='matrix');
+  document.getElementById('compare-toggle-drivers').classList.toggle('active',view==='drivers');
+  document.getElementById('compare-matrix-view').style.display=view==='matrix'?'block':'none';
+  document.getElementById('compare-drivers-view').style.display=view==='drivers'?'block':'none';
+}
+
+async function generateComparison() {
+  if(state.scenarios.length<2){log('Need at least 2 scenarios','warn');document.getElementById('compare-empty').style.display='flex';return;}
+  document.getElementById('compare-empty').style.display='none';
+  document.getElementById('compare-wrap').style.display='none';
+  document.getElementById('compare-generating').style.display='flex';
+  document.getElementById('btn-gen-compare').disabled=true;
+  log('Generating comparison matrix…','info');
+  const scenarioSummaries=state.scenarios.map((sc,i)=>`SCENARIO ${i+1} — ${sc.title}\nTagline: ${sc.tagline}\nBody: ${sc.body.slice(0,300)}\nDrivers: ${(sc.drivers||[]).join(', ')}`).join('\n\n---\n\n');
+  const prompt=`Compare these ${state.scenarios.length} future scenarios. TOPIC: "${state.topic}"\n\n${scenarioSummaries}\n\nReturn ONLY JSON (no markdown):\n{"dimensions":[{"name":"short","label":"Full label","description":"1 sentence","cells":["value per scenario..."]}]}\n\nInclude 8 dimensions: Outlook, Timeframe, Key Risk, Winners, Losers, Technology, Policy, Wild Card. Be specific, contrasting. 10-20 words per cell.`;
+  try {
+    const result=await llm([{role:'system',content:'You are a foresight analyst. Return only valid JSON.'},{role:'user',content:prompt}],0.7,2000);
+    const parsed=parseJSON(result);
+    document.getElementById('compare-generating').style.display='none';
+    if(parsed?.dimensions?.length){
+      state.comparison=parsed;
+      document.getElementById('compare-wrap').style.display='block';
+      renderComparisonTable(parsed); renderDriversChart(parsed);
+      log(`Comparison ready: ${parsed.dimensions.length} dimensions`,'ok');
+    } else { log('Comparison parse failed','err'); document.getElementById('compare-empty').style.display='flex'; }
+  } catch(e) { document.getElementById('compare-generating').style.display='none'; document.getElementById('compare-empty').style.display='flex'; log(`Comparison error: ${e.message}`,'err'); }
+  document.getElementById('btn-gen-compare').disabled=false;
+}
+
+function renderComparisonTable(data) {
+  const table=document.getElementById('compare-table'); table.innerHTML='';
+  const colors=['var(--amber)','var(--teal)','var(--rose)','var(--violet)','var(--green)','#60a5fa'];
+  const thead=table.createTHead(); const headerRow=thead.insertRow();
+  const thDim=document.createElement('th'); thDim.className='dim-header'; thDim.textContent='Dimension'; headerRow.appendChild(thDim);
+  state.scenarios.forEach((sc,i)=>{
+    const th=document.createElement('th'); th.className=`compare-sc-color-${i%6}`; th.style.borderTop=`3px solid ${colors[i%6]}`;
+    th.innerHTML=`<div style="font-size:8px;font-family:'MonoFont',monospace;letter-spacing:.1em;text-transform:uppercase;color:${colors[i%6]};margin-bottom:3px;font-weight:400;">${(toneLabels[i]||'SCENARIO '+(i+1)).split('—')[1]?.trim()||'SCENARIO '+(i+1)}</div><div style="font-family:'SerifFont',serif;font-size:14px;color:var(--text-bright);">${escHtml(sc.title)}</div><div style="font-family:'SansSerifFont',sans-serif;font-size:10px;color:var(--text-dim);font-style:italic;margin-top:2px;font-weight:400;">${escHtml(sc.tagline||'')}</div>`;
+    headerRow.appendChild(th);
+  });
+  const tbody=table.createTBody();
+  (data.dimensions||[]).forEach(dim=>{
+    const row=tbody.insertRow();
+    const tdLabel=row.insertCell(); tdLabel.className='dim-label';
+    tdLabel.innerHTML=`<div>${escHtml(dim.label||dim.name)}</div><div style="font-size:9px;color:var(--text-dim);margin-top:2px;text-transform:none;letter-spacing:0;font-family:'SansSerifFont',sans-serif;line-height:1.4;">${escHtml(dim.description||'')}</div>`;
+    (dim.cells||[]).forEach(cell=>{const td=row.insertCell();td.innerHTML=escHtml(cell);});
+  });
+  const actionRow=tbody.insertRow(); const tdE=actionRow.insertCell(); tdE.className='dim-label';
+  state.scenarios.forEach(sc=>{const td=actionRow.insertCell();td.style.paddingTop='10px';td.innerHTML=`<button class="btn btn-ghost" onclick="exploreScenario('${sc.id}')" style="font-size:8px;padding:3px 8px;">◐ Explore</button>`;});
+}
+
+function renderDriversChart(data) {
+  const driverView=document.getElementById('compare-drivers-view'); driverView.innerHTML='';
+  const driverMap=new Map();
+  state.scenarios.forEach((sc,i)=>{(sc.drivers||[]).forEach(d=>{if(!driverMap.has(d))driverMap.set(d,[]);driverMap.get(d).push(i);});});
+  const sorted=[...driverMap.entries()].sort((a,b)=>b[1].length-a[1].length);
+  const colors=['var(--amber)','var(--teal)','var(--rose)','var(--violet)','var(--green)','#60a5fa'];
+  driverView.innerHTML=`<div style="margin-bottom:16px;"><div style="font-family:'MonoFont',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-dim);margin-bottom:10px;">Driver Presence Across Scenarios</div><div style="display:flex;flex-direction:column;gap:6px;">${sorted.map(([driver,indices])=>`<div style="display:flex;align-items:center;gap:10px;"><div style="flex:0 0 180px;font-size:11px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${escHtml(driver)}">${escHtml(driver)}</div><div style="display:flex;gap:3px;align-items:center;">${state.scenarios.map((sc,i)=>`<div style="width:22px;height:22px;border-radius:3px;border:1px solid ${indices.includes(i)?colors[i%6]:'var(--border)'};background:${indices.includes(i)?colors[i%6].replace('var(--','rgba(').replace(')',',0.2)'):'transparent'};display:flex;align-items:center;justify-content:center;font-size:8px;color:${indices.includes(i)?colors[i%6]:'var(--border2)'};" title="${escHtml(sc.title)}">${indices.includes(i)?'✓':'·'}</div>`).join('')}</div><div style="font-family:'MonoFont',monospace;font-size:9px;color:var(--text-dim);">${indices.length}/${state.scenarios.length}</div></div>`).join('')}</div></div><div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:16px;padding-top:12px;border-top:1px solid var(--border);">${state.scenarios.map((sc,i)=>`<div style="display:flex;align-items:center;gap:5px;font-size:10px;"><div style="width:10px;height:10px;border-radius:2px;background:${colors[i%6]};opacity:0.7;"></div><span style="color:var(--text-dim);">${escHtml(sc.title)}</span></div>`).join('')}</div>`;
+}
+
+function findEvidenceForResponse(responseText) {
+  if(!state.knowledgeBase.length) return [];
+  const rWords=new Set(responseText.toLowerCase().replace(/[^a-z0-9\s]/g,' ').split(/\s+/).filter(w=>w.length>4));
+  const scored=state.knowledgeBase.map(article=>{
+    const tWords=article.title.toLowerCase().replace(/[^a-z0-9\s]/g,' ').split(/\s+/).filter(w=>w.length>3);
+    const eWords=article.excerpt.toLowerCase().replace(/[^a-z0-9\s]/g,' ').split(/\s+/).filter(w=>w.length>4);
+    let score=0;
+    tWords.forEach(w=>{if(rWords.has(w))score+=3;});
+    const rLower=responseText.toLowerCase();
+    for(let i=0;i<tWords.length-1;i++){if(rLower.includes(tWords[i]+' '+tWords[i+1]))score+=5;}
+    eWords.slice(0,30).forEach(w=>{if(rWords.has(w))score+=1;});
+    return{article,score};
+  });
+  return scored.filter(s=>s.score>=4).sort((a,b)=>b.score-a.score).slice(0,4).map(s=>s.article);
+}
+
+function highlightKbCard(articleId) {
+  showTab('research');
+  setTimeout(()=>{
+    const card=document.getElementById(`kb-card-${articleId}`); if(!card) return;
+    card.scrollIntoView({behavior:'smooth',block:'center'});
+    card.classList.remove('evidence-highlight'); void card.offsetWidth;
+    card.classList.add('evidence-highlight'); setTimeout(()=>card.classList.remove('evidence-highlight'),1500);
+  },100);
+}
+
+function initDragResize() {
+  const divider=document.getElementById('research-divider');
+  const kbSection=document.getElementById('kb-section');
+  const body=document.getElementById('research-body');
+  if(!divider||!kbSection||!body) return;
+  let dragging=false,startX=0,startW=0;
+  divider.addEventListener('mousedown',e=>{dragging=true;startX=e.clientX;startW=kbSection.getBoundingClientRect().width;divider.classList.add('dragging');document.body.style.cursor='col-resize';document.body.style.userSelect='none';e.preventDefault();});
+  document.addEventListener('mousemove',e=>{if(!dragging)return;const totalW=body.getBoundingClientRect().width;const delta=e.clientX-startX;const newW=Math.max(200,Math.min(totalW-220,startW+delta));kbSection.style.width=newW+'px';});
+  document.addEventListener('mouseup',()=>{if(!dragging)return;dragging=false;divider.classList.remove('dragging');document.body.style.cursor='';document.body.style.userSelect='';rerenderGraph();});
+}
+
+function closeModal(e) { if(!e||e.target===document.getElementById('modal-overlay')) document.getElementById('modal-overlay').classList.remove('open'); }
+
+window.onload=()=>{
+  loadVaultFromStorage(); checkLM(); initDragResize();
+  const chatInput=document.getElementById('chat-input');
+  chatInput.addEventListener('input',()=>{chatInput.style.height='38px';chatInput.style.height=Math.min(chatInput.scrollHeight,110)+'px';});
+};
+</script>
 </body>
 </html>

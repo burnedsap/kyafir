@@ -1,6 +1,5 @@
 # kyafir
 
-
 ## Instructions
 
 Step 1
@@ -18,3 +17,9 @@ Select your model, and start the server.
 ![Screenshot](img/kyafir-3.png "Download model of your choice")
 
 Navigate to "Server Settings" and enable CORS if it isn't already enabled.
+
+
+
+![Screenshot](img/kyafir-4.png "Download model of your choice")
+
+Make sure the link to the server is the same as the server link in LMStudio. Click the 'ping' to check the connection.
