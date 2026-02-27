@@ -18,8 +18,20 @@ Select your model, and start the server.
 
 Navigate to "Server Settings" and enable CORS if it isn't already enabled.
 
-
-
 ![Screenshot](img/kyafir-4.png "Download model of your choice")
 
-Make sure the link to the server is the same as the server link in LMStudio. Click the 'ping' to check the connection.
+
+
+
+
+### Notes
+
+- Switch between the Local (LMStudio on your machine) and Cloud (OpenAI API etc.) as desired.
+
+- The slider at the bottom determines how many articles are taken into context when creating scenarios. I recommend using 15 at max when using a local machine with ~16GB RAM. If scenarios don't generate or you see an error in the logs, reduce that amount. Your results may vary.
+
+- Comparing scenarios does tend to push the local LLMs quite a bit
+
+- Accuracy and rigour is not the objective here. It's about storytelling, design fiction and speculation. Use the LLMs to help your ability to think outside the box, write stories, and investigate. 
+
+- Feedback is always welcome!
