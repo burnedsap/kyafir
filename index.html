@@ -181,6 +181,12 @@ strong { font-weight: 500;}
 .continue-input { flex: 1; background: transparent; border: none; outline: none; color: var(--text-bright); font-family: 'SansSerifFont', sans-serif; font-size: 12px; padding: 4px 0; }
 .continue-input::placeholder { color: var(--text-dim); font-style: italic; }
 .research-footer-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.kb-slider-wrap { display: flex; align-items: center; gap: 7px; }
+.kb-slider-label { font-family: 'MonoFont', monospace; font-size: 9px; color: var(--text-dim); letter-spacing: .1em; white-space: nowrap; }
+.kb-slider-val { font-family: 'MonoFont', monospace; font-size: 10px; color: var(--amber); min-width: 22px; text-align: center; }
+input[type=range].kb-slider { -webkit-appearance: none; appearance: none; width: 80px; height: 3px; border-radius: 2px; background: var(--border2); outline: none; cursor: pointer; }
+input[type=range].kb-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%; background: var(--amber); border: 2px solid var(--bg); cursor: pointer; }
+input[type=range].kb-slider::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--amber); border: 2px solid var(--bg); cursor: pointer; }
 #panel-scenarios { display: none; flex-direction: column; overflow: hidden; }
 #panel-scenarios.active { display: flex; }
 .scenarios-header-bar { padding: 20px 28px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: baseline; justify-content: space-between; flex-shrink: 0; }
@@ -251,10 +257,10 @@ textarea.chat-input:focus { border-color: var(--amber); }
 .compare-toggle-btn.active { background: var(--surface3); color: var(--text-bright); }
 .compare-generating { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 80px 40px; color: var(--text-dim); font-family: 'MonoFont', monospace; font-size: 10px; }
 .compare-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 11.5px; min-width: 600px; }
-.compare-table th { background: var(--surface2); padding: 10px 14px; text-align: left; font-family: 'SerifFont', serif; font-size: 13px; color: var(--text-bright); border-bottom: 2px solid var(--border2); border-right: 1px solid var(--border); white-space: nowrap; position: sticky; top: 0; z-index: 2; }
+.compare-table th { background: var(--surface2); padding: 10px 14px; text-align: left; font-family: 'SerifFont', serif; font-size: 13px; color: var(--text-bright); border-bottom: 2px solid var(--border2); border-right: 1px solid var(--border); white-space: normal; word-wrap: break-word; max-width: 200px; min-width: 100px; width: 200px; position: sticky; top: 0; z-index: 2; }
 .compare-table th.dim-header { font-family: 'MonoFont', monospace; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-dim); background: var(--surface); width: 140px; min-width: 120px; }
-.compare-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); vertical-align: top; line-height: 1.65; color: var(--text); }
-.compare-table td.dim-label { font-family: 'MonoFont', monospace; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-dim); background: var(--surface); white-space: nowrap; position: sticky; left: 0; z-index: 1; }
+.compare-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); vertical-align: top; line-height: 1.65; color: var(--text); max-width: 200px; min-width: 100px; width: 200px; white-space: normal; word-wrap: break-word; overflow-wrap: break-word; }
+.compare-table td.dim-label { font-family: 'MonoFont', monospace; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-dim); background: var(--surface); white-space: normal; word-wrap: break-word; overflow-wrap: break-word; max-width: 130px; min-width: 100px; width: 130px; position: sticky; left: 0; z-index: 1; }
 .compare-table tr:hover td:not(.dim-label) { background: rgba(255,255,255,0.015); }
 .compare-sc-color-0 { border-top: 3px solid var(--amber) !important; } .compare-sc-color-1 { border-top: 3px solid var(--teal) !important; } .compare-sc-color-2 { border-top: 3px solid var(--rose) !important; } .compare-sc-color-3 { border-top: 3px solid var(--violet) !important; } .compare-sc-color-4 { border-top: 3px solid var(--green) !important; } .compare-sc-color-5 { border-top: 3px solid #60a5fa !important; }
 .compare-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--text-dim); font-family: 'MonoFont', monospace; font-size: 13px; }
@@ -297,10 +303,32 @@ textarea.chat-input:focus { border-color: var(--amber); }
       <div style="margin-top:6px;font-family:'MonoFont',monospace;font-size:8.5px;color:var(--text-dim);line-height:1.6;">Comma-separated domains to include in the research scan.</div>
     </div>
     <div class="sb-block">
-      <div class="sb-label">LM Studio <span id="lm-ping" style="cursor:pointer;" onclick="checkLM()">↺ ping</span></div>
-      <div class="settings-row">
-        <input type="text" id="lm-url" value="http://localhost:1234" placeholder="LM Studio URL">
-        <button class="btn btn-ghost" onclick="checkLM()" style="padding:4px 8px;">⟳</button>
+      <div class="sb-label">LLM Connection <span id="lm-ping" style="cursor:pointer;" onclick="checkLM()">↺ ping</span></div>
+      <!-- LOCAL / CLOUD toggle -->
+      <div style="display:flex;gap:3px;background:var(--surface3);border:1px solid var(--border);border-radius:5px;padding:2px;margin-bottom:10px;">
+        <button id="toggle-local" class="btn" onclick="setLLMMode('local')" style="flex:1;padding:5px 8px;font-size:9px;letter-spacing:.1em;border-radius:3px;background:var(--amber);color:#0a0a0a;border:none;">⬡ LOCAL</button>
+        <button id="toggle-cloud" class="btn" onclick="setLLMMode('cloud')" style="flex:1;padding:5px 8px;font-size:9px;letter-spacing:.1em;border-radius:3px;background:transparent;color:var(--text-dim);border:none;">☁ CLOUD</button>
+      </div>
+      <!-- LOCAL panel -->
+      <div id="llm-local-panel">
+        <div class="settings-row" style="flex-wrap:nowrap;">
+          <input type="text" id="lm-url" value="http://localhost:1234" placeholder="LM Studio URL" style="width:100%;" oninput="saveLLMPrefs()">
+          <button class="btn btn-ghost" onclick="checkLM()" style="padding:4px 8px;flex-shrink:0;">⟳</button>
+        </div>
+        <div style="margin-top:4px;font-family:'MonoFont',monospace;font-size:8px;color:var(--text-dim);">Default: http://localhost:1234</div>
+      </div>
+      <!-- CLOUD panel -->
+      <div id="llm-cloud-panel" style="display:none;">
+        <div class="settings-row" style="flex-wrap:nowrap;margin-bottom:6px;">
+          <input type="text" id="cloud-url" value="https://api.openai.com" placeholder="API base URL" style="width:100%;" oninput="saveLLMPrefs()">
+          <button class="btn btn-ghost" onclick="checkLM()" style="padding:4px 8px;flex-shrink:0;">⟳</button>
+        </div>
+        <div style="position:relative;margin-bottom:4px;">
+          <input type="password" id="api-key" placeholder="API key (sk-...)" style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:4px;color:var(--text);font-family:'MonoFont',monospace;font-size:10px;padding:4px 26px 4px 7px;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='var(--violet)'" onblur="this.style.borderColor='var(--border2)'" oninput="saveLLMPrefs()">
+          <button onclick="toggleKeyVisibility()" title="Show/hide key" style="position:absolute;right:5px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:10px;padding:0;line-height:1;" id="key-eye">●</button>
+        </div>
+        <input type="text" id="lm-model" value="gpt-4o-mini" placeholder="Model (e.g. gpt-4o-mini)" style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:4px;color:var(--text);font-family:'MonoFont',monospace;font-size:10px;padding:4px 7px;outline:none;box-sizing:border-box;margin-bottom:3px;" onfocus="this.style.borderColor='var(--teal)'" onblur="this.style.borderColor='var(--border2)'" oninput="saveLLMPrefs()">
+        <div style="font-family:'MonoFont',monospace;font-size:8px;color:var(--text-dim);">gpt-4o · gpt-4o-mini · o3-mini · o4-mini</div>
       </div>
       <div style="margin-top:7px;" class="settings-row">
         <span style="font-family:'MonoFont',monospace;font-size:9px;color:var(--text-dim);letter-spacing:.1em;">DEPTH</span>
@@ -378,8 +406,16 @@ textarea.chat-input:focus { border-color: var(--amber); }
           <input class="continue-input" id="continue-input" type="text" placeholder="Add another angle… e.g. 'urban heat islands', 'battery supply chains'" onkeydown="continueResearchOnEnter(event)">
           <button class="btn btn-ghost" id="btn-continue" onclick="continueResearchFromBar()" style="white-space:nowrap;">↺ Run</button>
         </div>
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;margin:0 6px;">
+          <button class="btn btn-ghost" onclick="downloadObsidianVault()" title="Download research as Obsidian vault" style="white-space:nowrap;">⬇ Obsidian</button>
+        </div>
         <div class="research-footer-right">
           <span style="font-family:'MonoFont',monospace;font-size:9px;color:var(--text-dim);" id="research-status">— no research yet —</span>
+          <div class="kb-slider-wrap" title="Number of articles randomly sampled for scenario generation">
+            <span class="kb-slider-label">ARTICLES</span>
+            <input type="range" class="kb-slider" id="sc-article-count" min="1" max="18" value="18" step="1" oninput="updateArticleSlider()">
+            <span class="kb-slider-val" id="sc-article-val">18</span>
+          </div>
           <button class="btn btn-teal" id="btn-gen-scenarios" onclick="generateScenarios()">◇ Generate Scenarios →</button>
         </div>
       </div>
@@ -486,7 +522,23 @@ textarea.chat-input:focus { border-color: var(--amber); }
     <div class="modal-actions" id="modal-actions"></div>
   </div>
 </div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script>
+// Simple delay helper
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+// ── Random sample helper ─────────────────────────────────────────────────────
+// Returns a new array of `n` items drawn randomly (without replacement) from `arr`.
+// If n >= arr.length, returns a full shuffle of arr.
+function randomSample(arr, n) {
+  const copy = [...arr];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy.slice(0, n);
+}
+
 const state = {
   topic: '', keywords: { core: [], adjacent: [], guide: [], discovered: [] },
   knowledgeBase: [], graphNodes: [], graphLinks: [], scenarios: [],
@@ -496,29 +548,169 @@ const state = {
 };
 
 async function checkLM() {
-  const url = document.getElementById('lm-url').value.trim();
-  state.lmUrl = url;
+  const rawUrl = getLLMUrl();
+  const apiKey = getLLMKey();
   const dot = document.getElementById('lm-dot');
   const txt = document.getElementById('lm-status-text');
   dot.className = 'status-dot thinking'; txt.textContent = 'Checking…';
+  const headers = {};
+  if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
   try {
-    const r = await fetch(`${url}/v1/models`, { signal: AbortSignal.timeout(3000) });
+    const r = await fetch(`${rawUrl}/v1/models`, { signal: AbortSignal.timeout(6000), headers });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      const msg = err?.error?.message || `HTTP ${r.status}`;
+      dot.className = 'status-dot err';
+      txt.textContent = r.status === 401 ? 'Bad API key' : `Error ${r.status}`;
+      log(`Connection failed: ${msg}`, 'err');
+      return;
+    }
     const data = await r.json();
-    const modelName = data.data?.[0]?.id || 'unknown';
+    const isOpenAI = rawUrl.includes('openai.com');
+    const models = data.data || [];
+    let displayModel = models[0]?.id || 'unknown';
+    if (isOpenAI) {
+      const preferred = models.find(m => m.id.startsWith('gpt-4o')) || models.find(m => m.id.startsWith('gpt-4')) || models.find(m => m.id.startsWith('gpt-'));
+      displayModel = preferred?.id || displayModel;
+    }
     dot.className = 'status-dot ok';
-    txt.textContent = modelName.length > 22 ? modelName.slice(0, 20) + '…' : modelName;
-    log('LM Studio connected: ' + modelName, 'ok');
-  } catch(e) { dot.className = 'status-dot err'; txt.textContent = 'LM Studio offline'; log('LM Studio not reachable', 'err'); }
+    txt.textContent = displayModel.length > 22 ? displayModel.slice(0, 20) + '…' : displayModel;
+    const source = isOpenAI ? 'OpenAI' : 'LM Studio';
+    log(`${source} connected — ${models.length} model(s) available. Showing: ${displayModel}`, 'ok');
+    if (isOpenAI) log('Tip: gpt-4o-mini is cheapest; gpt-4o for quality; o3-mini/o4-mini for reasoning', 'info');
+  } catch(e) {
+    dot.className = 'status-dot err';
+    txt.textContent = rawUrl.includes('openai.com') ? 'OpenAI unreachable' : 'LM Studio offline';
+    log(`Connection error: ${e.message}`, 'err');
+  }
 }
 
 async function llm(messages, temperature = 0.7, maxTokens = 2000) {
-  const url = `${document.getElementById('lm-url').value.trim()}/v1/chat/completions`;
-  const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages, temperature, max_tokens: maxTokens, stream: false }) });
-  if (!resp.ok) throw new Error(`LM Studio error: ${resp.status}`);
+  const base = getLLMUrl();
+  const apiKey = getLLMKey();
+  const isOpenAI = base.includes('openai.com') || llmMode === 'cloud';
+  const modelId = document.getElementById('lm-model')?.value.trim() || '';
+  const body = { messages, temperature, max_tokens: maxTokens, stream: false };
+  if (modelId) body.model = modelId;
+
+  const directUrl = `${base}/v1/chat/completions`;
+  const proxyUrl = `http://localhost:3131/proxy`;
+
+  let resp;
+  if (isOpenAI && apiKey) {
+    try {
+      resp = await fetch(proxyUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetUrl: directUrl, apiKey, payload: body }),
+        signal: AbortSignal.timeout(60000)
+      });
+    } catch(proxyErr) {
+      log('Local proxy not running — trying direct (works if served over HTTPS)', 'warn');
+      const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` };
+      resp = await fetch(directUrl, { method: 'POST', headers, body: JSON.stringify(body), signal: AbortSignal.timeout(60000) });
+    }
+  } else {
+    const headers = { 'Content-Type': 'application/json' };
+    resp = await fetch(directUrl, { method: 'POST', headers, body: JSON.stringify(body), signal: AbortSignal.timeout(60000) });
+  }
+
+  if (!resp.ok) {
+    let errMsg = `HTTP ${resp.status}`;
+    try { const e = await resp.json(); errMsg = e?.error?.message || errMsg; } catch(_) {}
+    if (resp.status === 429) throw new Error(`Rate limited — free tier is very restricted. Wait a minute or add credit. (${errMsg})`);
+    if (resp.status === 401) throw new Error(`Invalid API key — check the key in the sidebar. (${errMsg})`);
+    if (resp.status === 400) throw new Error(`Bad request — is the model name correct? (e.g. gpt-4o-mini) (${errMsg})`);
+    throw new Error(`LLM error ${resp.status}: ${errMsg}`);
+  }
   const data = await resp.json();
   return data.choices?.[0]?.message?.content || '';
 }
+
+function toggleKeyVisibility() {
+  const input = document.getElementById('api-key');
+  const btn = document.getElementById('key-eye');
+  if (input.type === 'password') { input.type = 'text'; btn.textContent = '○'; btn.title = 'Hide key'; }
+  else { input.type = 'password'; btn.textContent = '●'; btn.title = 'Show key'; }
+}
+
+// ── LLM mode: 'local' | 'cloud' ─────────────────────────────────────────
+let llmMode = 'local';
+
+function setLLMMode(mode) {
+  llmMode = mode;
+  const localPanel = document.getElementById('llm-local-panel');
+  const cloudPanel = document.getElementById('llm-cloud-panel');
+  const btnLocal   = document.getElementById('toggle-local');
+  const btnCloud   = document.getElementById('toggle-cloud');
+  if (mode === 'local') {
+    localPanel.style.display = 'block';
+    cloudPanel.style.display = 'none';
+    btnLocal.style.background = 'var(--amber)'; btnLocal.style.color = '#0a0a0a';
+    btnCloud.style.background = 'transparent'; btnCloud.style.color = 'var(--text-dim)';
+    updateStatusPill('local');
+  } else {
+    localPanel.style.display = 'none';
+    cloudPanel.style.display = 'block';
+    btnCloud.style.background = 'var(--teal)'; btnCloud.style.color = '#0a0a0a';
+    btnLocal.style.background = 'transparent'; btnLocal.style.color = 'var(--text-dim)';
+    updateStatusPill('cloud');
+  }
+  saveLLMPrefs();
+}
+
+function updateStatusPill(mode) {
+  const dot = document.getElementById('lm-dot');
+  const txt = document.getElementById('lm-status-text');
+  if (!dot || !txt) return;
+  if (mode === 'local') {
+    dot.className = 'status-dot';
+    txt.textContent = 'Local LLM';
+  } else {
+    const model = document.getElementById('lm-model')?.value.trim();
+    dot.className = 'status-dot';
+    txt.textContent = model ? model : 'Cloud LLM';
+  }
+}
+
+function getLLMUrl() {
+  if (llmMode === 'cloud') {
+    return (document.getElementById('cloud-url')?.value.trim() || 'https://api.openai.com').replace(/\/+$/, '').replace(/\/v1$/i, '');
+  }
+  return (document.getElementById('lm-url')?.value.trim() || 'http://localhost:1234').replace(/\/+$/, '').replace(/\/v1$/i, '');
+}
+
+function getLLMKey() {
+  if (llmMode === 'cloud') return document.getElementById('api-key')?.value.trim() || '';
+  return '';
+}
+
+function saveLLMPrefs() {
+  try {
+    localStorage.setItem('foresight-llm-mode', llmMode);
+    localStorage.setItem('foresight-local-url', document.getElementById('lm-url')?.value || 'http://localhost:1234');
+    localStorage.setItem('foresight-cloud-url', document.getElementById('cloud-url')?.value || 'https://api.openai.com');
+    localStorage.setItem('foresight-cloud-key', document.getElementById('api-key')?.value || '');
+    localStorage.setItem('foresight-cloud-model', document.getElementById('lm-model')?.value || '');
+  } catch(_) {}
+}
+
+function loadLLMPrefs() {
+  try {
+    const mode     = localStorage.getItem('foresight-llm-mode') || 'local';
+    const localUrl = localStorage.getItem('foresight-local-url');
+    const cloudUrl = localStorage.getItem('foresight-cloud-url');
+    const cloudKey = localStorage.getItem('foresight-cloud-key');
+    const model    = localStorage.getItem('foresight-cloud-model');
+    if (localUrl) { const el = document.getElementById('lm-url');     if (el) el.value = localUrl; }
+    if (cloudUrl) { const el = document.getElementById('cloud-url');  if (el) el.value = cloudUrl; }
+    if (cloudKey) { const el = document.getElementById('api-key');    if (el) el.value = cloudKey; }
+    if (model)    { const el = document.getElementById('lm-model');   if (el) el.value = model;    }
+    setLLMMode(mode);
+  } catch(_) { setLLMMode('local'); }
+}
+
+function updateConnectionHint() { /* kept for compatibility */ }
 
 function parseJSON(text) {
   const clean = text.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
@@ -607,7 +799,7 @@ async function startResearch() {
     state.researchRunning = false;
     document.getElementById('btn-start-research').disabled = false;
     document.getElementById('btn-stop').style.display = 'none';
-    setProgress(null); rerenderGraph();
+    setProgress(null); rerenderGraph(); syncSliderToKB();
   }
 }
 function stopResearch() { state.stopFlag = true; log('Research stopped by user', 'warn'); }
@@ -662,14 +854,23 @@ async function researchIteration(iter) {
     ? [...state.keywords.core, ...state.keywords.adjacent.slice(0, 4), ...state.keywords.guide]
     : [...state.keywords.discovered.slice(-6), ...state.keywords.guide, ...state.keywords.adjacent.slice(4)];
   if (searchTerms.length === 0) searchTerms = state.keywords.core;
+  let termIndex = 0;
   for (const term of searchTerms) {
     if (state.stopFlag) return;
     await searchWikipedia(term);
+    await sleep(300);
     await searchArxiv(term);
-    await searchSemanticScholar(term);
+    await sleep(300);
+    if (termIndex % 2 === 0) {
+      await searchSemanticScholar(term);
+      await sleep(1200);
+    }
     await searchCrossref(term);
+    await sleep(200);
     await searchOpenLibrary(term);
+    await sleep(200);
     if (state.knowledgeBase.length > 0 && state.knowledgeBase.length % 4 === 0) await discoverNewKeywords();
+    termIndex++;
   }
 }
 
@@ -701,15 +902,39 @@ async function fetchWikipediaArticle(title, queryKw) {
   } catch(e) { /* silent */ }
 }
 
+// ── CORS proxy helper ────────────────────────────────────────────────────────
+const CORS_PROXIES = [
+  url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+  url => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+  url => `https://cors-anywhere.herokuapp.com/${url}`,
+];
+
+async function proxiedFetch(targetUrl, timeoutMs = 12000) {
+  for (const buildProxy of CORS_PROXIES) {
+    const proxyUrl = buildProxy(targetUrl);
+    try {
+      const resp = await fetch(proxyUrl, { signal: AbortSignal.timeout(timeoutMs) });
+      if (!resp.ok) continue;
+      const text = await resp.text();
+      let body = text;
+      try {
+        const parsed = JSON.parse(text);
+        if (parsed && typeof parsed.contents === 'string') body = parsed.contents;
+      } catch(_) {}
+      if (!body || body.length < 10) continue;
+      return { ok: true, text: body };
+    } catch(_) { await sleep(200); continue; }
+  }
+  return { ok: false, text: '' };
+}
+
 async function searchArxiv(query) {
   try {
     log(`arXiv: "${query}"…`);
     const arxivUrl = `https://export.arxiv.org/api/query?search_query=all:${encodeURIComponent(query.split(' ').slice(0,5).join(' '))}&start=0&max_results=4`;
-    const resp = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(arxivUrl)}`, { signal: AbortSignal.timeout(12000) });
-    if (!resp.ok) { log(`  arXiv proxy HTTP ${resp.status}`, 'warn'); return; }
-    const json = await resp.json();
-    if (!json.contents) { log(`  arXiv: empty response`, 'warn'); return; }
-    const xml = new DOMParser().parseFromString(json.contents, 'application/xml');
+    const result = await proxiedFetch(arxivUrl);
+    if (!result.ok) { log(`  arXiv: all proxies failed`, 'warn'); return; }
+    const xml = new DOMParser().parseFromString(result.text, 'application/xml');
     if (xml.querySelector('parsererror')) { log(`  arXiv: parse error`, 'warn'); return; }
     let added = 0;
     for (const entry of xml.querySelectorAll('entry')) {
@@ -735,10 +960,11 @@ async function searchArxiv(query) {
 async function searchSemanticScholar(query) {
   try {
     log(`Semantic Scholar: "${query}"…`);
-    const url = `https://api.semanticscholar.org/graph/v1/paper/search?query=${encodeURIComponent(query.split(' ').slice(0,6).join(' '))}&limit=4&fields=title,abstract,year,externalIds,openAccessPdf`;
-    const resp = await fetch(url, { signal: AbortSignal.timeout(10000), headers:{'Accept':'application/json'} });
-    if (!resp.ok) { log(`  S2 HTTP ${resp.status}`, 'warn'); return; }
-    const data = await resp.json();
+    const apiUrl = `https://api.semanticscholar.org/graph/v1/paper/search?query=${encodeURIComponent(query.split(' ').slice(0,6).join(' '))}&limit=4&fields=title,abstract,year,externalIds,openAccessPdf`;
+    const result = await proxiedFetch(apiUrl);
+    if (!result.ok) { log(`  S2: all proxies failed`, 'warn'); return; }
+    let data;
+    try { data = JSON.parse(result.text); } catch(_) { log(`  S2: parse error`, 'warn'); return; }
     let added = 0;
     for (const paper of data.data||[]) {
       if (state.stopFlag) return;
@@ -757,9 +983,6 @@ async function searchSemanticScholar(query) {
   }
 }
 
-// ── Crossref ─────────────────────────────────────────────────
-// 145M+ scholarly works with DOIs. Full CORS, no API key needed.
-// Filters for abstracts only — many records lack them so yield varies.
 async function searchCrossref(query) {
   try {
     log(`Crossref: "${query}"…`);
@@ -773,9 +996,8 @@ async function searchCrossref(query) {
       const title = Array.isArray(item.title) ? item.title[0] : item.title;
       if (!title||title.length<5) continue;
       if (state.knowledgeBase.find(k=>k.title===title)) continue;
-      // Strip JATS XML tags that Crossref sometimes includes in abstracts
       const abstract = (item.abstract||'').replace(/<[^>]+>/g,'').trim();
-      if (!abstract||abstract.length<60) continue; // skip records without abstracts
+      if (!abstract||abstract.length<60) continue;
       const articleUrl = item.DOI ? `https://doi.org/${item.DOI}` : (item.URL||'#');
       addToKnowledgeBase({ id:`cr-${Date.now()}-${Math.random().toString(36).slice(2,6)}`, title, source:'crossref', url:articleUrl, excerpt:abstract.slice(0,320)+'…', content:abstract.slice(0,1500), keywords:[query] });
       addGraphNode(title,'article',1); addGraphLink(query,title,0.7);
@@ -789,9 +1011,6 @@ async function searchCrossref(query) {
   }
 }
 
-// ── Open Library ──────────────────────────────────────────────
-// 20M+ books. Surfaces long-form conceptual works, historical texts,
-// and non-academic ideas that journal databases miss — great for foresight.
 async function searchOpenLibrary(query) {
   try {
     log(`Open Library: "${query}"…`);
@@ -925,14 +1144,9 @@ function rerenderGraph() {
   graphSim.on('tick',()=>{link.attr('x1',d=>d.source.x).attr('y1',d=>d.source.y).attr('x2',d=>d.target.x).attr('y2',d=>d.target.y);node.attr('transform',d=>`translate(${d.x},${d.y})`);});
 }
 
-// ═══════════════════════════════════════════════════════════
-// SCENARIOS — with normaliseScenario() to fix undefined tagline
-// ═══════════════════════════════════════════════════════════
 const toneLabels=['SCENARIO 1 — OPTIMISTIC','SCENARIO 2 — CAUTIONARY','SCENARIO 3 — WILDCARD','SCENARIO 4 — SYSTEMIC','SCENARIO 5 — HYBRID','SCENARIO 6 — DISRUPTION'];
 const scColorIdx=(i)=>i%6;
 
-// Normalises raw LLM output — handles models that return alternate field names.
-// This is the primary fix for "undefined" taglines on first generation.
 function normaliseScenario(raw) {
   return {
     title:   raw.title   || raw.name        || 'Untitled Scenario',
@@ -955,11 +1169,14 @@ async function generateScenarios() {
   state.scenarios = []; document.getElementById('scenarios-grid').innerHTML = '';
   log('Generating 3 divergent scenarios…', 'info');
 
-  const kbSummary = state.knowledgeBase.slice(0,18).map(a=>`[${a.source}] ${a.title}: ${a.excerpt.slice(0,200)}`).join('\n\n');
+  const scArticleCount = parseInt(document.getElementById('sc-article-count')?.value || '18');
+  // Random sample for a better spread across the full knowledge base
+  const sampledArticles = randomSample(state.knowledgeBase, scArticleCount);
+  const kbSummary = sampledArticles.map(a=>`[${a.source}] ${a.title}\n${a.content||a.excerpt}`).join('\n\n---\n\n');
+  log(`Sampled ${sampledArticles.length} articles at random from ${state.knowledgeBase.length} total`, 'info');
   const allKws = [...state.keywords.core,...state.keywords.adjacent,...state.keywords.guide,...state.keywords.discovered].join(', ');
 
-  // CRITICAL FIX: Explicit schema with example prevents models returning wrong field names.
-  const prompt = `You are a strategic foresight expert. Generate 3 sharply different 2040 future scenarios.
+  const prompt = `You are a strategic foresight expert. You are working on creating speculative provocations to help make sense of what the future could look like. Generate 3 sharply different future scenarios.
 
 TOPIC: "${state.topic}"
 CONCEPTS: ${allKws}
@@ -967,12 +1184,12 @@ CONCEPTS: ${allKws}
 KNOWLEDGE BASE:
 ${kbSummary}
 
-Create OPTIMISTIC, CAUTIONARY, and WILDCARD scenarios. Be specific, draw on economic, social, health, environmental, political dimensions.
+Create OPTIMISTIC, CAUTIONARY, and WILDCARD scenarios. Be specific, draw on Political, Economic, Social, Technological, Legal, and Environmental dimensions. Each scenario should be a vivid, engaging narrative that captures a distinct possible future. Use the knowledge base to ground the scenarios in current trends and insights, but extrapolate creatively to explore surprising and thought-provoking possibilities. Try to lean into less obvious, more novel futures rather than the most likely ones. Think of low adoption signals, emerging technologies, known unkowns, certical uncertainties, and wildcards in the current landscape that could lead to divergent outcomes.
 
 EVERY scenario MUST have ALL of these exact JSON field names:
 - "title": 3-6 word evocative title
 - "tagline": single sentence capturing the scenario essence (10-20 words)
-- "body": 2-3 paragraph vivid description (150-200 words)
+- "body": 2-3 paragraph vivid description (150-200 words), and always include a predicted timeframe (eg. "By 2040…")
 - "drivers": array of exactly 4 key driving forces as strings
 - "tone": "optimistic", "cautionary", or "wildcard"
 
@@ -982,7 +1199,7 @@ Return ONLY valid JSON, NO markdown fences, NO extra fields:
     {
       "title": "The Quiet Revolution",
       "tagline": "Distributed energy and shared mobility quietly reshape cities from the ground up.",
-      "body": "By 2040...",
+      "body": "By [predicted timeframe, eg. 2035, 2040]...",
       "drivers": ["distributed solar", "shared mobility platforms", "urban densification", "battery breakthroughs"],
       "tone": "optimistic"
     },
@@ -1005,7 +1222,7 @@ Return ONLY valid JSON, NO markdown fences, NO extra fields:
 
   try {
     const result = await llm([
-      { role:'system', content:'You are a strategic foresight expert. Return ONLY valid JSON. Always include title, tagline, body, drivers, and tone for every scenario.' },
+      { role:'system', content:'You are a strategic foresight expert. Return ONLY valid JSON. Always include title, tagline, body (always include timeframe in the body), drivers, and tone for every scenario.' },
       { role:'user', content:prompt }
     ], 0.85, 2200);
     const parsed = parseJSON(result);
@@ -1019,7 +1236,7 @@ Return ONLY valid JSON, NO markdown fences, NO extra fields:
       });
       document.getElementById('scenarios-grid').style.display = 'grid';
       document.getElementById('sc-count').textContent = `${state.scenarios.length} scenarios`;
-      document.getElementById('sc-footer-status').textContent = `${state.scenarios.length} scenarios from ${state.knowledgeBase.length} articles`;
+      document.getElementById('sc-footer-status').textContent = `${state.scenarios.length} scenarios from ${sampledArticles.length} randomly sampled articles`;
       document.getElementById('btn-more-scenarios').style.display = 'inline-flex';
       document.getElementById('btn-regen').style.display = 'inline-flex';
       document.getElementById('btn-go-explore').style.display = 'inline-flex';
@@ -1040,7 +1257,11 @@ async function generateMoreScenarios() {
   const btn = document.getElementById('btn-more-scenarios');
   btn.disabled = true; btn.innerHTML = '<span class="spin"></span>';
   log('Generating 3 more scenarios…', 'info');
-  const kbSummary = state.knowledgeBase.slice(0,18).map(a=>`[${a.source}] ${a.title}: ${a.excerpt.slice(0,180)}`).join('\n\n');
+  const scArticleCount = parseInt(document.getElementById('sc-article-count')?.value || '18');
+  // Random sample for variety — different articles may inspire different scenarios
+  const sampledArticles = randomSample(state.knowledgeBase, scArticleCount);
+  const kbSummary = sampledArticles.map(a=>`[${a.source}] ${a.title}\n${a.content||a.excerpt}`).join('\n\n---\n\n');
+  log(`Sampled ${sampledArticles.length} articles at random from ${state.knowledgeBase.length} total`, 'info');
   const allKws = [...state.keywords.core,...state.keywords.adjacent,...state.keywords.guide,...state.keywords.discovered].join(', ');
   const existing = state.scenarios.map(s=>s.title).join(', ');
   const prompt = `Generate 3 NEW future scenarios for 2040 different from: ${existing}.
@@ -1073,7 +1294,6 @@ function appendScenarioCard(sc, absIdx) {
   const card = document.createElement('div');
   card.className = `scenario-card sc-color-${ci}`;
   card.style.animationDelay = (absIdx%3*0.1)+'s';
-  // FIX: only render tagline element if it has content
   const taglineHtml = sc.tagline ? `<div class="sc-tagline">${escHtml(sc.tagline)}</div>` : '';
   card.innerHTML = `
     <div class="sc-index">${toneLabels[absIdx]||`SCENARIO ${absIdx+1}`}</div>
@@ -1099,7 +1319,6 @@ function showFullScenario(scenarioId) {
 
 function renderChatNav() {
   const pills = document.getElementById('chat-nav-pills'); pills.innerHTML = '';
-  const colors=['var(--amber)','var(--teal)','var(--rose)','var(--violet)','var(--green)','#60a5fa'];
   state.scenarios.forEach((sc,i) => {
     const pill=document.createElement('button'); pill.className='chat-nav-pill'; pill.id=`pill-${sc.id}`;
     pill.onclick=()=>selectChatScenario(sc.id);
@@ -1260,7 +1479,16 @@ async function continueResearchFromBar() {
     for(const term of terms) {
       if(state.stopFlag) break;
       if(barTerms.includes(term)&&!state.keywords.guide.includes(term)){state.keywords.guide.push(term);addGraphNode(term,'guide',2);renderKeywordChips();}
-      await searchWikipedia(term); await searchArxiv(term); await searchSemanticScholar(term); await searchCrossref(term); await searchOpenLibrary(term);
+      await searchWikipedia(term);
+      await sleep(300);
+      await searchArxiv(term);
+      await sleep(300);
+      await searchSemanticScholar(term);
+      await sleep(1200);
+      await searchCrossref(term);
+      await sleep(200);
+      await searchOpenLibrary(term);
+      await sleep(200);
       count++; setProgress(5+(count/terms.length)*85);
       if(state.knowledgeBase.length%4===0&&state.knowledgeBase.length>0) await discoverNewKeywords();
     }
@@ -1270,7 +1498,7 @@ async function continueResearchFromBar() {
   finally {
     state.researchRunning=false; btn.disabled=false; btn.innerHTML='↺ Run';
     document.getElementById('btn-start-research').disabled=false; document.getElementById('btn-stop').style.display='none';
-    setProgress(null); rerenderGraph(); if(extra) input.value='';
+    setProgress(null); rerenderGraph(); syncSliderToKB(); if(extra) input.value='';
   }
 }
 async function continueResearch() { await continueResearchFromBar(); }
@@ -1362,6 +1590,97 @@ function highlightKbCard(articleId) {
   },100);
 }
 
+function downloadObsidianVault() {
+  if (state.knowledgeBase.length === 0 && state.scenarios.length === 0) {
+    log('Nothing to export yet — run some research first', 'warn'); return;
+  }
+  if (typeof JSZip === 'undefined') { log('JSZip not loaded — check your internet connection', 'err'); return; }
+  const zip = new JSZip();
+  const vault = zip.folder('Foresight Vault');
+  const safeFilename = s => s.replace(/[\\/:*?"<>|]/g, '-').slice(0, 80);
+
+  const allKws = [...state.keywords.core,...state.keywords.adjacent,...state.keywords.guide,...state.keywords.discovered];
+  let index = `# ${state.topic || 'Research'}\n\n`;
+  index += `**Generated:** ${new Date().toLocaleString()}\n`;
+  index += `**Articles:** ${state.knowledgeBase.length} | **Scenarios:** ${state.scenarios.length}\n\n`;
+  index += `## Keywords\n\n`;
+  if (state.keywords.core.length) index += `**Core:** ${state.keywords.core.join(', ')}\n\n`;
+  if (state.keywords.adjacent.length) index += `**Adjacent:** ${state.keywords.adjacent.join(', ')}\n\n`;
+  if (state.keywords.guide.length) index += `**Guide:** ${state.keywords.guide.join(', ')}\n\n`;
+  if (state.keywords.discovered.length) index += `**Discovered:** ${state.keywords.discovered.join(', ')}\n\n`;
+  index += `## Knowledge Base\n\n`;
+  state.knowledgeBase.forEach(a => { index += `- [[${safeFilename(a.title)}]]\n`; });
+  if (state.scenarios.length) {
+    index += `\n## Scenarios\n\n`;
+    state.scenarios.forEach(s => { index += `- [[${safeFilename(s.title)}]]\n`; });
+  }
+  vault.file('Index.md', index);
+
+  const articlesFolder = vault.folder('Articles');
+  state.knowledgeBase.forEach(a => {
+    const srcLabel = {wikipedia:'Wikipedia',arxiv:'arXiv','semantic-scholar':'Semantic Scholar',crossref:'Crossref',openlibrary:'Open Library'}[a.source]||a.source;
+    let md = `# ${a.title}\n\n`;
+    md += `**Source:** ${srcLabel}\n`;
+    md += `**URL:** ${a.url}\n`;
+    if (a.keywords?.length) md += `**Keywords:** ${a.keywords.join(', ')}\n`;
+    md += `\n## Content\n\n${a.content||a.excerpt}\n`;
+    md += `\n---\n*[[Index]]*\n`;
+    articlesFolder.file(`${safeFilename(a.title)}.md`, md);
+  });
+
+  if (state.scenarios.length) {
+    const scenariosFolder = vault.folder('Scenarios');
+    state.scenarios.forEach((sc, i) => {
+      let md = `# ${sc.title}\n\n`;
+      if (sc.tagline) md += `> ${sc.tagline}\n\n`;
+      md += `**Tone:** ${sc.tone||'—'} | **Index:** ${i+1}\n\n`;
+      md += `## Narrative\n\n${sc.body}\n\n`;
+      if (sc.drivers?.length) {
+        md += `## Key Drivers\n\n`;
+        sc.drivers.forEach(d => { md += `- ${d}\n`; });
+      }
+      md += `\n---\n*[[Index]]*\n`;
+      scenariosFolder.file(`${safeFilename(sc.title)}.md`, md);
+    });
+  }
+
+  const nodes = [], edges = [];
+  nodes.push({id:'topic',type:'text',text:`# ${state.topic||'Research'}`,x:0,y:0,width:260,height:80,color:'1'});
+  const kws = state.keywords.core.slice(0,8);
+  kws.forEach((k,i) => {
+    const id = `kw_${i}`;
+    const angle = (i/kws.length)*2*Math.PI;
+    nodes.push({id,type:'text',text:k,x:Math.round(380*Math.cos(angle)),y:Math.round(220*Math.sin(angle)),width:160,height:50,color:'3'});
+    edges.push({id:`e_kw_${i}`,fromNode:'topic',toNode:id});
+  });
+  state.scenarios.forEach((sc,i) => {
+    const id = `sc_${i}`;
+    nodes.push({id,type:'text',text:`**${sc.title}**\n\n${sc.tagline||''}`,x:700+(i%3)*360,y:Math.floor(i/3)*260-200,width:320,height:150,color:String((i%5)+2)});
+    edges.push({id:`e_sc_${i}`,fromNode:'topic',toNode:id});
+  });
+  vault.file('Foresight Map.canvas', JSON.stringify({nodes,edges},null,2));
+
+  const baseConfig = {
+    "version": 1,
+    "filters": [],
+    "properties": [
+      {"name":"Source","type":"text"},
+      {"name":"Keywords","type":"multitext"},
+      {"name":"URL","type":"url"}
+    ],
+    "views": [{"type":"table","label":"Articles","filters":[]}]
+  };
+  vault.file('Articles.base', JSON.stringify(baseConfig, null, 2));
+
+  zip.generateAsync({type:'blob'}).then(blob => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `foresight-vault-${(state.topic||'research').replace(/[^a-z0-9]/gi,'-').toLowerCase().slice(0,40)}.zip`;
+    a.click();
+    log(`Obsidian vault exported — ${state.knowledgeBase.length} articles, ${state.scenarios.length} scenarios`, 'ok');
+  }).catch(e => log(`Export error: ${e.message}`, 'err'));
+}
+
 function initDragResize() {
   const divider=document.getElementById('research-divider');
   const kbSection=document.getElementById('kb-section');
@@ -1375,8 +1694,26 @@ function initDragResize() {
 
 function closeModal(e) { if(!e||e.target===document.getElementById('modal-overlay')) document.getElementById('modal-overlay').classList.remove('open'); }
 
+function updateArticleSlider() {
+  const slider = document.getElementById('sc-article-count');
+  const val = document.getElementById('sc-article-val');
+  if (!slider || !val) return;
+  val.textContent = slider.value;
+}
+
+function syncSliderToKB() {
+  const slider = document.getElementById('sc-article-count');
+  const val = document.getElementById('sc-article-val');
+  if (!slider) return;
+  const total = state.knowledgeBase.length;
+  if (total === 0) return;
+  slider.max = total;
+  slider.value = total;
+  if (val) val.textContent = total;
+}
+
 window.onload=()=>{
-  loadVaultFromStorage(); checkLM(); initDragResize();
+  loadVaultFromStorage(); loadLLMPrefs(); initDragResize();
   const chatInput=document.getElementById('chat-input');
   chatInput.addEventListener('input',()=>{chatInput.style.height='38px';chatInput.style.height=Math.min(chatInput.scrollHeight,110)+'px';});
 };
